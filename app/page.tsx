@@ -1,25 +1,14 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import Header from "./components/Header";
-import Footer from "./components/Footer";
-import StatusMessage from "./components/StatusMessage";
+import { useState, useEffect } from "react"; 
+import Header from "./components/Header"; 
 import FileList from "./components/FileList";
-import FileStatistics from "./components/FileStatistics";
-import SearchBar from "./components/SearchBar";
+import FileStatistics from "./components/FileStatistics"; 
 import { XMarkIcon } from "@heroicons/react/16/solid";
 
 export default function Home() {
   const [files, setFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showStats, setShowStats] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ type: string; message: string }>({
-    type: "",
-    message: "",
-  });
-  const [searchTerm, setSearchTerm] = useState("");
-
   // Fetch the list of files when the component mounts
   useEffect(() => {
     fetchFiles();
@@ -37,31 +26,13 @@ export default function Home() {
       setFiles(data.files);
     } catch (error) {
       console.error("Error fetching files:", error);
-      setStatusMessage({
-        type: "error",
-        message: "Failed to load files. Please try again.",
-      });
+ 
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle status changes from child components
-  const handleStatusChange = (status: { type: string; message: string }) => {
-    setStatusMessage(status);
 
-    // Auto-clear success messages after 5 seconds
-    if (status && status.type === "success") {
-      setTimeout(() => {
-        setStatusMessage({ type: "", message: "" });
-      }, 5000);
-    }
-  };
-
-  // Handle search
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100">
@@ -124,21 +95,11 @@ export default function Home() {
             <FileList
               files={files}
               isLoading={isLoading}
-              onDelete={fetchFiles}
-              onStatusChange={handleStatusChange}
+              onDelete={fetchFiles} 
             />
           </div>
       </div>
       {/* <Footer /> */}
     </div>
   );
-}
-
-// Function to format file size
-function formatFileSize(bytes: number) {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }

@@ -22,7 +22,7 @@ export const handleDownload = (fileName: string, e: React.MouseEvent) => {
 export const handleDelete = async (
   fileName: string,
   e: React.MouseEvent,
-  onStatusChange: any
+  onStatusChange: (status: { type: string; message: string }) => void
 ) => {
   e.stopPropagation();
   if (!confirm(`Are you sure you want to delete ${fileName}?`)) {

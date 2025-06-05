@@ -2,15 +2,27 @@ import { getFileTypeIcon } from "@/lib/fileIcons";
 import { formatDate, formatFileSize, handleDelete, handleDownload } from "@/lib/operations";
 import React, { useState } from "react";
 import FileDetailsModal from "./FileDetailsModal";
+import { Stats } from 'fs';
 
+interface FileType{
+    name: string;
+    size: number;
+    modified: string;
+    stats: Stats;
+}
 export default function FileListTable({
   requestSort,
   getSortIndicator,
   sortedFiles,
   onStatusChange
-}: any) {
+}:{
+    requestSort: (key: string) => void;
+    getSortIndicator: (key: string) => string;
+    sortedFiles: FileType[];
+    onStatusChange: (status: { type: string; message: string }) => void;
+} ) {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-  const [showDetails, setShowDetails] = useState<any>(null);
+  const [showDetails, setShowDetails] = useState< FileType | null>(null);
 
   const toggleFileSelection = (
     fileName: string,
@@ -47,16 +59,13 @@ export default function FileListTable({
   };
 
   const handleBatchDelete = (e: React.MouseEvent) => {
-    e && e.stopPropagation();
+    e.stopPropagation();
     selectedFiles.forEach((fileName) => {
       handleDelete(fileName, e,onStatusChange);
     });
     setSelectedFiles([]);
   };
-
-  const stopPropagation = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
+ 
   return (
     <div className="overflow-x-auto">
       <FileDetailsModal file={showDetails} onClose={() => setShowDetails(null)} />
@@ -158,7 +167,7 @@ export default function FileListTable({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {sortedFiles.map((file: any) => (
+            {sortedFiles.map((file: FileType) => (
               <tr
                 key={file.name}
                 className="hover:bg-gray-50 transition-colors cursor-pointer"

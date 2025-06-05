@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import SearchBar from './SearchBar';
-import FileDetailsModal from './FileDetailsModal';
 import { motion } from 'framer-motion';
-import { getFileTypeIcon } from '@/lib/fileIcons';
 import FileListTable from './FileListTable';
 
-export default function FileList({ files, isLoading, onDelete, onStatusChange }) {
+export default function FileList({ files, isLoading, onDelete }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });

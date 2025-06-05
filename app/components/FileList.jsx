@@ -105,7 +105,6 @@ export default function FileList({ files, isLoading, onDelete }) {
             getSortIndicator={getSortIndicator}
             handleFileClick={handleFileClick} 
             sortedFiles={sortedFiles}
-            onStatusChange={onStatusChange}
             onDelete={onDelete}
           />  
         </div>

@@ -120,14 +120,14 @@ export default function Home() {
             </div>
           )} */}
 
-        {/* <div className="slide-up">
+        <div className="slide-up">
             <FileList
               files={files}
               isLoading={isLoading}
               onDelete={fetchFiles}
               onStatusChange={handleStatusChange}
             />
-          </div> */}
+          </div>
       </div>
       {/* <Footer /> */}
     </div>

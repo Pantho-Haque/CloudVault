@@ -22,8 +22,7 @@ export const handleDownload = (fileName: string, e: React.MouseEvent) => {
 export const handleDelete = async (
   fileName: string,
   e: React.MouseEvent,
-  onStatusChange: (status: { type: string; message: string }) => void
-) => {
+  ) => {
   e.stopPropagation();
   if (!confirm(`Are you sure you want to delete ${fileName}?`)) {
     return;
@@ -42,15 +41,9 @@ export const handleDelete = async (
       throw new Error(errorData.message || "Failed to delete file");
     }
 
-    onStatusChange({
-      type: "success",
-      message: "File deleted successfully!",
-    });
+    
   } catch (error) {
     console.error("Error deleting file:", error);
-    onStatusChange({
-      type: "error",
-      message: "Failed to delete file. Please try again.",
-    });
+    
   }
 };

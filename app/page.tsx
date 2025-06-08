@@ -9,6 +9,7 @@ export default function Home() {
   const [files, setFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showStats, setShowStats] = useState(false);
+  
   // Fetch the list of files when the component mounts
   useEffect(() => {
     fetchFiles();
@@ -24,9 +25,37 @@ export default function Home() {
       }
       const data = await response.json();
       setFiles(data.files);
+      
+      // Start long polling for file changes
+      const pollForChanges = async (timestamp: number) => {
+        try {
+          const pollResponse = await fetch(`/api/files?poll=true&since=${timestamp}`);
+          if (!pollResponse.ok) return;
+          
+          const pollData = await pollResponse.json();
+          
+          if (pollData.changes) {
+            // If changes detected, refresh the file list
+            const refreshResponse = await fetch("/api/files");
+            if (refreshResponse.ok) {
+              const refreshData = await refreshResponse.json();
+              setFiles(refreshData.files);
+            }
+          }
+          
+          // Continue polling with the new timestamp
+          setTimeout(() => pollForChanges(pollData.timestamp), 2000);
+        } catch (err) {
+          console.error("Polling error:", err);
+          // Retry polling after a delay
+          setTimeout(() => pollForChanges(Date.now()), 5000);
+        }
+      };
+      
+      // Start the polling process
+      pollForChanges(Date.now());
     } catch (error) {
       console.error("Error fetching files:", error);
- 
     } finally {
       setIsLoading(false);
     }

@@ -9,15 +9,8 @@ export default function Header() {
   
   const handleFileUpload = () => {
     setShowUploader(false);
-    // Additional logic after successful upload
   };
-  
-  const handleStatusChange = (status) => {
-    // Handle status changes from the FileUploader
-    if (status && status.type === 'success') {
-      setTimeout(() => setShowUploader(false), 3000);
-    }
-  };
+
   
   return (
     <header className="bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md py-3 md:py-4 sticky top-0 z-20 border-b border-blue-100 animate-fade-in">
@@ -58,7 +51,7 @@ export default function Header() {
                 </svg>
               </button>
             </div>
-            <FileUploader onFileUpload={handleFileUpload} onStatusChange={handleStatusChange} />
+            <FileUploader onFileUpload={handleFileUpload} />
           </div>
         </div>
       )}

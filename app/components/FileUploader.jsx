@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FileUploader as ReactFileUploader } from 'react-drag-drop-files';
 import { XMarkIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 
-export default function FileUploader({ onFileUpload, onStatusChange }) {
+export default function FileUploader({ onFileUpload }) {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState(null);
   
@@ -19,20 +19,11 @@ export default function FileUploader({ onFileUpload, onStatusChange }) {
     if (event) event.preventDefault();
     
     if (!file) {
-      onStatusChange({
-        type: 'error',
-        message: 'Please select a file to upload.',
-      });
       return;
     }
 
     const formData = new FormData();
     formData.append('file', file);
-
-    onStatusChange({
-      type: 'loading',
-      message: 'Uploading file...',
-    });
 
     try {
       const response = await fetch('/api/files', {
@@ -46,10 +37,6 @@ export default function FileUploader({ onFileUpload, onStatusChange }) {
       }
 
       const result = await response.json();
-      onStatusChange({
-        type: 'success',
-        message: 'File uploaded successfully!',
-      });
       
       // Notify parent component to refresh the file list
       onFileUpload();
@@ -58,10 +45,6 @@ export default function FileUploader({ onFileUpload, onStatusChange }) {
       setFile(null);
     } catch (error) {
       console.error('Error uploading file:', error);
-      onStatusChange({
-        type: 'error',
-        message: error.message || 'Failed to upload file. Please try again.',
-      });
     }
   };
   
@@ -73,8 +56,8 @@ export default function FileUploader({ onFileUpload, onStatusChange }) {
           name="file"
           types={fileTypes}
           maxSize={10}
-          onTypeError={(err) => onStatusChange({ type: 'error', message: 'Invalid file type!' })}
-          onSizeError={(err) => onStatusChange({ type: 'error', message: 'File is too large! Max size is 10MB.' })}
+          onTypeError={(err) => console.log(err)}
+          onSizeError={(err) => console.log(err)}
           classes="dropzone"
           onDraggingStateChange={(dragging) => setIsDragging(dragging)}
           dropMessageStyle={{ backgroundColor: 'rgba(59, 130, 246, 0.05)' }}

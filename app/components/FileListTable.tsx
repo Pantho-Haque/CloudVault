@@ -14,12 +14,11 @@ export default function FileListTable({
   requestSort,
   getSortIndicator,
   sortedFiles,
-  onStatusChange
+    
 }:{
     requestSort: (key: string) => void;
     getSortIndicator: (key: string) => string;
     sortedFiles: FileType[];
-    onStatusChange: (status: { type: string; message: string }) => void;
 } ) {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [showDetails, setShowDetails] = useState< FileType | null>(null);
@@ -61,7 +60,7 @@ export default function FileListTable({
   const handleBatchDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     selectedFiles.forEach((fileName) => {
-      handleDelete(fileName, e,onStatusChange);
+      handleDelete(fileName, e);
     });
     setSelectedFiles([]);
   };
@@ -260,7 +259,7 @@ export default function FileListTable({
                     </button>
                     <button
                       onClick={(e) => {
-                        handleDelete(file.name, e, onStatusChange);
+                        handleDelete(file.name, e);
                       }}
                       className="p-1 md:p-1.5 bg-red-50 rounded-full text-red-600 hover:bg-red-100 hover:text-red-800 transition-all duration-200 transform hover:scale-110 cursor-pointer"
                       title="Delete"

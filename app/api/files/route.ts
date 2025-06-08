@@ -4,6 +4,9 @@ import path from 'path';
 
 // Define the upload directory path
 const uploadDir = path.join(process.cwd(), 'uploads');
+// Track file changes to support long polling
+let lastFileChange = Date.now();
+let clients: { resolve: (value: any) => void }[] = [];
 
 // Ensure the upload directory exists
 async function ensureUploadDir() {
@@ -15,23 +18,62 @@ async function ensureUploadDir() {
 }
 
 // Helper function to get file stats with name
-async function getFileStats(fileName:string) {
+async function getFileStats(fileName: string) {
   const filePath = path.join(uploadDir, fileName);
   const stats = await fs.stat(filePath);
   return {
     name: fileName,
     size: stats.size,
     modified: stats.mtime,
-    stats:stats
+    stats: stats
   };
 }
 
+// Notify all waiting clients about changes
+function notifyClients() {
+  lastFileChange = Date.now();
+  const currentClients = [...clients];
+  clients = [];
+  currentClients.forEach(client => client.resolve(true));
+}
+
+// Long polling wait function
+async function waitForChanges(since: number): Promise<boolean> {
+  if (since < lastFileChange) {
+    return true;
+  }
+  
+  return new Promise(resolve => {
+    const timeout = setTimeout(() => {
+      clients = clients.filter(c => c.resolve !== resolve);
+      resolve(false);
+    }, 30000); // 30 seconds timeout
+    
+    clients.push({
+      resolve: (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      }
+    });
+  });
+}
+
 // GET handler for file listing and file download
-export async function GET(request:Request) {
+export async function GET(request: Request) {
   await ensureUploadDir();
   
   const { searchParams } = new URL(request.url);
   const fileName = searchParams.get('fileName');
+  const since = parseInt(searchParams.get('since') || '0', 10);
+  
+  // Handle long polling for file list changes
+  if (searchParams.has('poll') && !fileName) {
+    const hasChanges = await waitForChanges(since);
+    return NextResponse.json({ 
+      changes: hasChanges, 
+      timestamp: lastFileChange 
+    });
+  }
   
   // If fileName is provided, handle file download
   if (fileName) {
@@ -68,7 +110,7 @@ export async function GET(request:Request) {
         '.svg': 'image/svg+xml',
       };
       
-      if (contentTypeMap[extension as keyof typeof contentTypeMap] ) {
+      if (contentTypeMap[extension as keyof typeof contentTypeMap]) {
         contentType = contentTypeMap[extension as keyof typeof contentTypeMap];
       }
       
@@ -105,7 +147,10 @@ export async function GET(request:Request) {
     // Filter out any null values (files that had errors)
     const validFiles = fileStats.filter(Boolean);
     
-    return NextResponse.json({ files: validFiles });
+    return NextResponse.json({ 
+      files: validFiles,
+      timestamp: lastFileChange
+    });
   } catch {
     console.error('Error listing files:');
     return NextResponse.json(
@@ -114,6 +159,7 @@ export async function GET(request:Request) {
     );
   }
 }
+
 // POST handler for file upload
 export async function POST(request: Request) {
   await ensureUploadDir();
@@ -140,9 +186,13 @@ export async function POST(request: Request) {
     // Get file stats for the response
     const fileStats = await getFileStats(filename);
     
+    // Notify clients about the change
+    notifyClients();
+    
     return NextResponse.json({
       message: 'File uploaded successfully',
       file: fileStats,
+      timestamp: lastFileChange
     });
   } catch (error) {
     console.error('Upload error:', error);
@@ -154,7 +204,7 @@ export async function POST(request: Request) {
 }
 
 // DELETE handler for file deletion
-export async function DELETE(request:Request) {
+export async function DELETE(request: Request) {
   await ensureUploadDir();
   
   const { searchParams } = new URL(request.url);
@@ -183,8 +233,12 @@ export async function DELETE(request:Request) {
     // Delete the file
     await fs.unlink(filePath);
     
+    // Notify clients about the change
+    notifyClients();
+    
     return NextResponse.json({
       message: 'File deleted successfully',
+      timestamp: lastFileChange
     });
   } catch (error) {
     console.error('Delete error:', error);
@@ -194,4 +248,3 @@ export async function DELETE(request:Request) {
     );
   }
 }
-

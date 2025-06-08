@@ -29,11 +29,20 @@ CloudVault is a modern file storage and management web application built with Ne
 ## Getting Started
 
 1. Clone the repository
-2. Install dependencies: `npm install`
-3. Run development server: `npm run dev`
-4. Build for production: `npm run build`
-5. Start production server: `npm run start`
+2. Install dependencies: `pnpm install`
+3. Run development server: `pnpm run dev`
+4. Build for production: `pnpm run build`
+5. Start production server: `pnpm run start`
 
-## License
+## Installation
 
-This project is private and proprietary.
+```bash
+pnpm install
+```
+
+## Running the Application
+
+```bash
+pnpm run start
+```
+

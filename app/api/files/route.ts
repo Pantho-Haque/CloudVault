@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { NextResponse } from "next/server";
+import { promises as fs } from "fs";
+import path from "path";
 
 // Define the upload directory path
-const uploadDir = path.join(process.cwd(), 'uploads');
+const uploadDir = path.join(process.cwd(), "uploads");
 // Track file changes to support long polling
 let lastFileChange = Date.now();
-let clients: { resolve: (value: any) => void }[] = [];
+let clients: { resolveFunction: () => void }[] = [];
 
 // Ensure the upload directory exists
 async function ensureUploadDir() {
@@ -25,7 +25,7 @@ async function getFileStats(fileName: string) {
     name: fileName,
     size: stats.size,
     modified: stats.mtime,
-    stats: stats
+    stats: stats,
   };
 }
 
@@ -34,7 +34,7 @@ function notifyClients() {
   lastFileChange = Date.now();
   const currentClients = [...clients];
   clients = [];
-  currentClients.forEach(client => client.resolve(true));
+  currentClients.forEach((client) => client.resolveFunction());
 }
 
 // Long polling wait function
@@ -42,18 +42,18 @@ async function waitForChanges(since: number): Promise<boolean> {
   if (since < lastFileChange) {
     return true;
   }
-  
-  return new Promise(resolve => {
+
+  return new Promise((resolve) => {
     const timeout = setTimeout(() => {
-      clients = clients.filter(c => c.resolve !== resolve);
+      clients = clients.filter((c) => c.resolveFunction !== resolve);
       resolve(false);
     }, 30000); // 30 seconds timeout
-    
+
     clients.push({
-      resolve: (value) => {
+      resolveFunction: () => {
         clearTimeout(timeout);
-        resolve(value);
-      }
+        resolve(true);
+      },
     });
   });
 }
@@ -61,75 +61,75 @@ async function waitForChanges(since: number): Promise<boolean> {
 // GET handler for file listing and file download
 export async function GET(request: Request) {
   await ensureUploadDir();
-  
+
   const { searchParams } = new URL(request.url);
-  const fileName = searchParams.get('fileName');
-  const since = parseInt(searchParams.get('since') || '0', 10);
-  
+  const fileName = searchParams.get("fileName");
+  const since = parseInt(searchParams.get("since") || "0", 10);
+
   // Handle long polling for file list changes
-  if (searchParams.has('poll') && !fileName) {
+  if (searchParams.has("poll") && !fileName) {
     const hasChanges = await waitForChanges(since);
-    return NextResponse.json({ 
-      changes: hasChanges, 
-      timestamp: lastFileChange 
+    return NextResponse.json({
+      changes: hasChanges,
+      timestamp: lastFileChange,
     });
   }
-  
+
   // If fileName is provided, handle file download
   if (fileName) {
     try {
       const filePath = path.join(uploadDir, fileName);
-      
+
       // Check if file exists
       try {
         await fs.access(filePath);
       } catch {
         return NextResponse.json(
-          { message: 'File not found' },
+          { message: "File not found" },
           { status: 404 }
         );
       }
-      
+
       // Read the file
       const fileBuffer = await fs.readFile(filePath);
-      
+
       // Determine content type (basic implementation)
-      let contentType = 'application/octet-stream';
+      let contentType = "application/octet-stream";
       const extension = path.extname(fileName).toLowerCase();
       const contentTypeMap = {
-        '.txt': 'text/plain',
-        '.html': 'text/html',
-        '.css': 'text/css',
-        '.js': 'text/javascript',
-        '.json': 'application/json',
-        '.pdf': 'application/pdf',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.gif': 'image/gif',
-        '.svg': 'image/svg+xml',
+        ".txt": "text/plain",
+        ".html": "text/html",
+        ".css": "text/css",
+        ".js": "text/javascript",
+        ".json": "application/json",
+        ".pdf": "application/pdf",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".svg": "image/svg+xml",
       };
-      
+
       if (contentTypeMap[extension as keyof typeof contentTypeMap]) {
         contentType = contentTypeMap[extension as keyof typeof contentTypeMap];
       }
-      
+
       // Create response with appropriate headers
       return new NextResponse(fileBuffer, {
         headers: {
-          'Content-Type': contentType,
-          'Content-Disposition': `attachment; filename="${fileName}"`,
+          "Content-Type": contentType,
+          "Content-Disposition": `attachment; filename="${fileName}"`,
         },
       });
     } catch {
-      console.error('Download error:');
+      console.error("Download error:");
       return NextResponse.json(
-        { message: 'Error downloading file' },
+        { message: "Error downloading file" },
         { status: 500 }
       );
     }
-  } 
-  
+  }
+
   // Otherwise, list all files
   try {
     const files = await fs.readdir(uploadDir);
@@ -143,18 +143,18 @@ export async function GET(request: Request) {
         }
       })
     );
-    
+
     // Filter out any null values (files that had errors)
     const validFiles = fileStats.filter(Boolean);
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       files: validFiles,
-      timestamp: lastFileChange
+      timestamp: lastFileChange,
     });
   } catch {
-    console.error('Error listing files:');
+    console.error("Error listing files:");
     return NextResponse.json(
-      { message: 'Error listing files' },
+      { message: "Error listing files" },
       { status: 500 }
     );
   }
@@ -163,41 +163,41 @@ export async function GET(request: Request) {
 // POST handler for file upload
 export async function POST(request: Request) {
   await ensureUploadDir();
-  
+
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-    
+    const file = formData.get("file") as File | null;
+
     if (!file) {
       return NextResponse.json(
-        { message: 'No file provided' },
+        { message: "No file provided" },
         { status: 400 }
       );
     }
-    
+
     // Get the file data
     const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = file.name.replace(/[^\w\s.-]/gi, ''); // Sanitize filename
+    const filename = file.name.replace(/[^\w\s.-]/gi, ""); // Sanitize filename
     const filepath = path.join(uploadDir, filename);
-    
+
     // Write the file to the upload directory
     await fs.writeFile(filepath, buffer);
-    
+
     // Get file stats for the response
     const fileStats = await getFileStats(filename);
-    
+
     // Notify clients about the change
     notifyClients();
-    
+
     return NextResponse.json({
-      message: 'File uploaded successfully',
+      message: "File uploaded successfully",
       file: fileStats,
-      timestamp: lastFileChange
+      timestamp: lastFileChange,
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error("Upload error:", error);
     return NextResponse.json(
-      { message: 'Error uploading file' },
+      { message: "Error uploading file" },
       { status: 500 }
     );
   }
@@ -206,44 +206,41 @@ export async function POST(request: Request) {
 // DELETE handler for file deletion
 export async function DELETE(request: Request) {
   await ensureUploadDir();
-  
+
   const { searchParams } = new URL(request.url);
-  const fileName = searchParams.get('fileName');
-  
+  const fileName = searchParams.get("fileName");
+
   if (!fileName) {
     return NextResponse.json(
-      { message: 'No filename provided' },
+      { message: "No filename provided" },
       { status: 400 }
     );
   }
-  
+
   try {
     const filePath = path.join(uploadDir, fileName);
-    
+
     // Check if file exists
     try {
       await fs.access(filePath);
     } catch {
-      return NextResponse.json(
-        { message: 'File not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "File not found" }, { status: 404 });
     }
-    
+
     // Delete the file
     await fs.unlink(filePath);
-    
+
     // Notify clients about the change
     notifyClients();
-    
+
     return NextResponse.json({
-      message: 'File deleted successfully',
-      timestamp: lastFileChange
+      message: "File deleted successfully",
+      timestamp: lastFileChange,
     });
   } catch (error) {
-    console.error('Delete error:', error);
+    console.error("Delete error:", error);
     return NextResponse.json(
-      { message: 'Error deleting file' },
+      { message: "Error deleting file" },
       { status: 500 }
     );
   }

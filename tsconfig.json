@@ -26,6 +26,18 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@components/*": [
+        "./app/components/*"
+      ],
+      "@components": [
+        "./app/components"
+      ],
+      "@/components/*": [
+        "./app/components/*"
+      ],
+      "@/components": [
+        "./app/components"
       ]
     }
   },
@@ -34,9 +46,11 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "next-env.d.ts",
+    "types/**/*.d.ts",
     "build/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "build"
   ]
 }

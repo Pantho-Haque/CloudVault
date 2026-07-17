@@ -1,4 +1,4 @@
-export const formatFileSize = (bytes: number) => {
+export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
@@ -6,44 +6,29 @@ export const formatFileSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
-// Function to format date
-export const formatDate = (dateString: string) => {
+export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleString();
 };
 
-// Function to handle file download
-export const handleDownload = (fileName: string, e: React.MouseEvent) => {
+export const handleDownload = (fileName: string, e: React.MouseEvent): void => {
   e.stopPropagation();
   window.open(`/api/files?fileName=${encodeURIComponent(fileName)}`, "_blank");
 };
 
-// Function to handle file deletion
-export const handleDelete = async (
-  fileName: string,
-  e: React.MouseEvent,
-  ) => {
+export const handleDelete = async (fileName: string, e: React.MouseEvent): Promise<void> => {
   e.stopPropagation();
-  if (!confirm(`Are you sure you want to delete ${fileName}?`)) {
-    return;
-  }
+  if (!confirm(`Are you sure you want to delete ${fileName}?`)) return;
 
   try {
-    const response = await fetch(
-      `/api/files?fileName=${encodeURIComponent(fileName)}`,
-      {
-        method: "DELETE",
-      }
-    );
-
+    const response = await fetch(`/api/files?fileName=${encodeURIComponent(fileName)}`, {
+      method: "DELETE",
+    });
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || "Failed to delete file");
     }
-
-    
   } catch (error) {
     console.error("Error deleting file:", error);
-    
   }
 };

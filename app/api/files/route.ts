@@ -1,102 +1,75 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
+import { config } from "@/lib/config";
+import {
+  ensureStorageDir,
+  refreshManifest,
+  getFiles,
+  addToManifest,
+  removeFromManifest,
+} from "@/lib/storage";
+import { addClient, removeClient, broadcastFileChange, startKeepAlive } from "@/lib/sse";
+import { runStartup } from "@/lib/startup";
 
-// Define the upload directory path
-const uploadDir = path.join(process.cwd(), "uploads");
-// Track file changes to support long polling
-let lastFileChange = Date.now();
-let clients: { resolveFunction: () => void }[] = [];
+startKeepAlive();
 
-// Ensure the upload directory exists
-async function ensureUploadDir() {
-  try {
-    await fs.access(uploadDir);
-  } catch {
-    await fs.mkdir(uploadDir, { recursive: true });
+let initialized = false;
+
+async function ensureInitialized() {
+  if (!initialized) {
+    await ensureStorageDir();
+    await refreshManifest();
+    await runStartup();
+    initialized = true;
   }
 }
 
-// Helper function to get file stats with name
-async function getFileStats(fileName: string) {
-  const filePath = path.join(uploadDir, fileName);
-  const stats = await fs.stat(filePath);
-  return {
-    name: fileName,
-    size: stats.size,
-    modified: stats.mtime,
-    stats: stats,
-  };
-}
-
-// Notify all waiting clients about changes
-function notifyClients() {
-  lastFileChange = Date.now();
-  const currentClients = [...clients];
-  clients = [];
-  currentClients.forEach((client) => client.resolveFunction());
-}
-
-// Long polling wait function
-async function waitForChanges(since: number): Promise<boolean> {
-  if (since < lastFileChange) {
-    return true;
-  }
-
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      clients = clients.filter((c) => c.resolveFunction !== resolve);
-      resolve(false);
-    }, 30000); // 30 seconds timeout
-
-    clients.push({
-      resolveFunction: () => {
-        clearTimeout(timeout);
-        resolve(true);
-      },
-    });
-  });
-}
-
-// GET handler for file listing and file download
 export async function GET(request: Request) {
-  await ensureUploadDir();
+  await ensureInitialized();
 
   const { searchParams } = new URL(request.url);
   const fileName = searchParams.get("fileName");
-  const since = parseInt(searchParams.get("since") || "0", 10);
+  const subpath = searchParams.get("path") || "";
+  const format = searchParams.get("format");
 
-  // Handle long polling for file list changes
-  if (searchParams.has("poll") && !fileName) {
-    const hasChanges = await waitForChanges(since);
-    return NextResponse.json({
-      changes: hasChanges,
-      timestamp: lastFileChange,
+  // SSE stream for real-time updates
+  if (searchParams.has("stream")) {
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        controller.enqueue(encoder.encode("event: connected\ndata: {}\n\n"));
+        const client = addClient(controller);
+        request.signal.addEventListener("abort", () => {
+          removeClient(client);
+          try { controller.close(); } catch { /* already closed */ }
+        });
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
     });
   }
 
-  // If fileName is provided, handle file download
+  // File download
   if (fileName) {
     try {
-      const filePath = path.join(uploadDir, fileName);
-
-      // Check if file exists
+      const filePath = path.join(config.storageDir, fileName);
       try {
         await fs.access(filePath);
       } catch {
-        return NextResponse.json(
-          { message: "File not found" },
-          { status: 404 }
-        );
+        return NextResponse.json({ message: "File not found" }, { status: 404 });
       }
 
-      // Read the file
       const fileBuffer = await fs.readFile(filePath);
-
-      // Determine content type (basic implementation)
-      let contentType = "application/octet-stream";
       const extension = path.extname(fileName).toLowerCase();
-      const contentTypeMap = {
+      const contentTypeMap: Record<string, string> = {
         ".txt": "text/plain",
         ".html": "text/html",
         ".css": "text/css",
@@ -108,21 +81,25 @@ export async function GET(request: Request) {
         ".jpeg": "image/jpeg",
         ".gif": "image/gif",
         ".svg": "image/svg+xml",
+        ".mp4": "video/mp4",
+        ".mp3": "audio/mpeg",
+        ".webp": "image/webp",
+        ".webm": "video/webm",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
+        ".ttf": "font/ttf",
       };
 
-      if (contentTypeMap[extension as keyof typeof contentTypeMap]) {
-        contentType = contentTypeMap[extension as keyof typeof contentTypeMap];
-      }
+      const contentType = contentTypeMap[extension] || "application/octet-stream";
 
-      // Create response with appropriate headers
       return new NextResponse(fileBuffer, {
         headers: {
           "Content-Type": contentType,
           "Content-Disposition": `attachment; filename="${fileName}"`,
+          "Cache-Control": "public, max-age=31536000",
         },
       });
     } catch {
-      console.error("Download error:");
       return NextResponse.json(
         { message: "Error downloading file" },
         { status: 500 }
@@ -130,29 +107,24 @@ export async function GET(request: Request) {
     }
   }
 
-  // Otherwise, list all files
-  try {
-    const files = await fs.readdir(uploadDir);
-    const fileStats = await Promise.all(
-      files.map(async (fileName) => {
-        try {
-          return await getFileStats(fileName);
-        } catch {
-          console.error(`Error getting stats for ${fileName}:`);
-          return null;
-        }
-      })
+  // ZIP download not implemented to avoid native dependencies.
+  if (format === "zip" && searchParams.has("files")) {
+    return NextResponse.json(
+      { message: "Batch zip download not available. Use batch download instead." },
+      { status: 501 }
     );
+  }
 
-    // Filter out any null values (files that had errors)
-    const validFiles = fileStats.filter(Boolean);
-
+  // List files in directory
+  try {
+    await ensureStorageDir();
+    const files = getFiles(subpath);
     return NextResponse.json({
-      files: validFiles,
-      timestamp: lastFileChange,
+      files,
+      timestamp: Date.now(),
+      path: subpath,
     });
   } catch {
-    console.error("Error listing files:");
     return NextResponse.json(
       { message: "Error listing files" },
       { status: 500 }
@@ -160,13 +132,13 @@ export async function GET(request: Request) {
   }
 }
 
-// POST handler for file upload
 export async function POST(request: Request) {
-  await ensureUploadDir();
+  await ensureInitialized();
 
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
+    const targetDir = (formData.get("path") as string) || "";
 
     if (!file) {
       return NextResponse.json(
@@ -175,24 +147,45 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get the file data
+    if (file.size > config.maxUploadSizeMB * 1024 * 1024) {
+      return NextResponse.json(
+        { message: `File exceeds maximum upload size of ${config.maxUploadSizeMB}MB` },
+        { status: 413 }
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = file.name.replace(/[^\w\s.-]/gi, ""); // Sanitize filename
-    const filepath = path.join(uploadDir, filename);
+    const sanitizedName = file.name.replace(/[^\w\s.\-()]/gi, "");
+    const filePath = targetDir
+      ? path.join(config.storageDir, targetDir, sanitizedName)
+      : path.join(config.storageDir, sanitizedName);
 
-    // Write the file to the upload directory
-    await fs.writeFile(filepath, buffer);
+    const dir = path.dirname(filePath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(filePath, buffer);
 
-    // Get file stats for the response
-    const fileStats = await getFileStats(filename);
+    const relativePath = path.relative(config.storageDir, filePath);
+    const stats = await fs.stat(filePath);
 
-    // Notify clients about the change
-    notifyClients();
+    addToManifest({
+      name: sanitizedName,
+      path: relativePath,
+      size: stats.size,
+      modified: stats.mtime.toISOString(),
+      isDirectory: false,
+    });
+
+    broadcastFileChange("created", relativePath);
 
     return NextResponse.json({
       message: "File uploaded successfully",
-      file: fileStats,
-      timestamp: lastFileChange,
+      file: {
+        name: sanitizedName,
+        path: relativePath,
+        size: stats.size,
+        modified: stats.mtime.toISOString(),
+      },
+      timestamp: Date.now(),
     });
   } catch (error) {
     console.error("Upload error:", error);
@@ -203,12 +196,35 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE handler for file deletion
 export async function DELETE(request: Request) {
-  await ensureUploadDir();
+  await ensureInitialized();
 
   const { searchParams } = new URL(request.url);
   const fileName = searchParams.get("fileName");
+  const subpath = searchParams.get("path") || "";
+
+  // Delete folder
+  if (searchParams.has("folder")) {
+    const folderName = searchParams.get("folder")!;
+    const folderPath = subpath
+      ? path.join(config.storageDir, subpath, folderName)
+      : path.join(config.storageDir, folderName);
+
+    try {
+      await fs.access(folderPath);
+    } catch {
+      return NextResponse.json({ message: "Folder not found" }, { status: 404 });
+    }
+
+    try {
+      await fs.rm(folderPath, { recursive: true, force: true });
+      removeFromManifest(subpath ? `${subpath}/${folderName}` : folderName);
+      broadcastFileChange("deleted", subpath ? `${subpath}/${folderName}` : folderName);
+      return NextResponse.json({ message: "Folder deleted successfully", timestamp: Date.now() });
+    } catch {
+      return NextResponse.json({ message: "Error deleting folder" }, { status: 500 });
+    }
+  }
 
   if (!fileName) {
     return NextResponse.json(
@@ -217,25 +233,31 @@ export async function DELETE(request: Request) {
     );
   }
 
+  const filePath = subpath
+    ? path.join(config.storageDir, subpath, fileName)
+    : path.join(config.storageDir, fileName);
+
   try {
-    const filePath = path.join(uploadDir, fileName);
+    await fs.access(filePath);
+  } catch {
+    return NextResponse.json({ message: "File not found" }, { status: 404 });
+  }
 
-    // Check if file exists
-    try {
-      await fs.access(filePath);
-    } catch {
-      return NextResponse.json({ message: "File not found" }, { status: 404 });
-    }
+  try {
+    // Move to trash instead of permanent delete
+    const trashDir = path.join(config.storageDir, ".trash");
+    await fs.mkdir(trashDir, { recursive: true });
 
-    // Delete the file
-    await fs.unlink(filePath);
+    const relativePath = subpath ? `${subpath}/${fileName}` : fileName;
+    const trashPath = path.join(trashDir, `${Date.now()}_${fileName.replace(/[\/\\]/g, "_")}`);
+    await fs.rename(filePath, trashPath);
 
-    // Notify clients about the change
-    notifyClients();
+    removeFromManifest(relativePath);
+    broadcastFileChange("deleted", relativePath);
 
     return NextResponse.json({
       message: "File deleted successfully",
-      timestamp: lastFileChange,
+      timestamp: Date.now(),
     });
   } catch (error) {
     console.error("Delete error:", error);

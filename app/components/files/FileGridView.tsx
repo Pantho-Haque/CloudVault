@@ -169,7 +169,7 @@ export default function FileGridView({
                 {file.name}
               </p>
               <p className="text-xs text-[var(--color-text-muted)] text-center mt-1">
-                {file.isDirectory ? "Folder" : formatFileSize(file.size)}
+                {formatFileSize(file.size)}
               </p>
               {!selectionMode && (
                 <div className="flex justify-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">

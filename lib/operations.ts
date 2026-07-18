@@ -7,13 +7,17 @@ export const formatFileSize = (bytes: number): string => {
 };
 
 export const formatDate = (dateString: string): string => {
+  if (!dateString) return "";
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
   return date.toLocaleString();
 };
 
 export const formatTimeAgo = (dateStr: string): string => {
+  if (!dateStr) return "";
   const now = new Date();
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
   const diffMs = now.getTime() - date.getTime();
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);

@@ -26,8 +26,10 @@ interface FileListTableProps {
 }
 
 function timeAgo(dateStr: string): string {
+  if (!dateStr) return "";
   const now = new Date();
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
   const diffMs = now.getTime() - date.getTime();
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
@@ -221,7 +223,7 @@ export default function FileListTable({
                   </div>
                 </td>
                 <td className="py-3 px-5 text-sm text-[var(--color-text-muted)]">
-                  {file.isDirectory ? "\u2014" : formatFileSize(file.size)}
+                  {formatFileSize(file.size)}
                 </td>
                 <td className="py-3 px-5 text-sm text-[var(--color-text-muted)]">
                   {timeAgo(file.modified)}

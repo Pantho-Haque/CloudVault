@@ -222,7 +222,7 @@ export default function Sidebar({ activeView, onViewChange, storageVersion = 0 }
                   {formatBytes(storage.used)} of {formatBytes(storage.quota)}
                 </span>
                 <span className="text-[10px] text-[var(--color-text-muted)]">
-                  {storagePercent.toFixed(0)}%
+                  {storagePercent < 0.1 && storagePercent > 0 ? "<0.1%" : `${storagePercent.toFixed(1)}%`}
                 </span>
               </div>
               <div className="h-1.5 bg-[var(--color-border)] rounded-full overflow-hidden flex">

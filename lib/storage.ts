@@ -32,13 +32,24 @@ async function walkDir(dir: string, baseDir: string): Promise<FileEntry[]> {
     const relativePath = path.relative(baseDir, fullPath);
 
     if (item.isDirectory()) {
-      entries.push({
-        name: item.name,
-        path: relativePath,
-        size: 0,
-        modified: "",
-        isDirectory: true,
-      });
+      try {
+        const stats = await fs.stat(fullPath);
+        entries.push({
+          name: item.name,
+          path: relativePath,
+          size: 0,
+          modified: stats.mtime.toISOString(),
+          isDirectory: true,
+        });
+      } catch {
+        entries.push({
+          name: item.name,
+          path: relativePath,
+          size: 0,
+          modified: "",
+          isDirectory: true,
+        });
+      }
       const subEntries = await walkDir(fullPath, baseDir);
       entries.push(...subEntries);
     } else {

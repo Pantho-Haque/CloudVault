@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { config } from "@/lib/config";
-import { ensureStorageDir, addToManifest } from "@/lib/storage";
+import { ensureStorageDir, addToManifest, refreshManifest } from "@/lib/storage";
 import { broadcastFileChange } from "@/lib/sse";
 
 export async function GET() {
@@ -81,13 +81,17 @@ export async function POST(request: Request) {
     const relativePath = path.relative(config.storageDir, restorePath);
     const stats = await fs.stat(restorePath);
 
-    addToManifest({
-      name: path.basename(restorePath),
-      path: relativePath,
-      size: stats.size,
-      modified: stats.mtime.toISOString(),
-      isDirectory: false,
-    });
+    if (stats.isDirectory()) {
+      await refreshManifest();
+    } else {
+      addToManifest({
+        name: path.basename(restorePath),
+        path: relativePath,
+        size: stats.size,
+        modified: stats.mtime.toISOString(),
+        isDirectory: false,
+      });
+    }
 
     broadcastFileChange("created", relativePath);
 

@@ -1,48 +1,67 @@
-# CloudVault - File Management System
+# CloudVault
 
-CloudVault is a modern file storage and management web application built with Next.js 15. The application provides an intuitive interface for uploading, downloading, and managing files.
+A self-hosted file storage and management web application built with Next.js 15.
+
+## Quick Start
+
+```bash
+npx cloudvault@latest
+```
+
+That's it. Requires only [Node.js 24+](https://nodejs.org) — no database, no build tools, no configuration needed.
+
+On first run, admin credentials are printed to the terminal. Open `http://localhost:3000` in your browser.
+
+## Install Globally
+
+```bash
+npm install -g cloudvault
+cloudvault
+```
+
+## Configuration
+
+All settings are optional — sensible defaults work out of the box.
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `3000` | Server port |
+| `STORAGE_DIR` | `~/.cloudvault/uploads` | Where uploaded files are stored |
+| `DB_PATH` | `~/.cloudvault/cloudvault.db` | SQLite database path |
+| `SESSION_SECRET` | *(auto-generated)* | Session encryption key |
+| `CLOUDVAULT_DATA_DIR` | `~/.cloudvault` | Base directory for data |
+
+Set via environment variables or a `.env` file in the data directory.
+
+## From Source
+
+```bash
+git clone https://github.com/Pantho-Haque/CloudVault.git
+cd CloudVault
+pnpm install
+pnpm run dev
+```
 
 ## Features
 
-- **File Upload**: Drag-and-drop or traditional file uploading
-- **File Management**: View, download, and delete files
-- **Search Functionality**: Filter files by name
-- **File Statistics**: View total storage usage, file type distribution, and more
-- **Responsive Design**: Works on desktop and mobile devices
+- Drag-and-drop file upload with progress tracking
+- Folder creation and file organization
+- Server-side search across all files
+- File sharing with password-protected links
+- File versioning and trash with retention
+- Dark/light theme support
+- Infinite scroll for large file collections
+- Admin dashboard with user management
+- Keyboard shortcuts (Ctrl+U upload, Ctrl+K search, N new folder)
 
 ## Tech Stack
 
-- **Frontend**: React 19, Next.js 15, TailwindCSS 4
-- **UI Components**: Framer Motion for animations, HeroIcons for icons
-- **File Handling**: React-Drag-Drop-Files for upload interface
-- **Development Tools**: TypeScript, ESLint, Turbopack
+- **Framework**: Next.js 15 (App Router, Turbopack)
+- **Runtime**: Node.js 24+ (uses `node:sqlite`)
+- **Database**: SQLite (zero configuration)
+- **Styling**: TailwindCSS v4
+- **Language**: TypeScript (strict mode)
 
-## Project Structure
+## License
 
-- `/app`: Next.js app directory structure
-  - `/api`: Backend API routes for file operations
-  - `/components`: Reusable UI components
-  - `/page.tsx`: Main application page
-- `/lib`: Utility functions for file operations and icons
-- `/uploads`: Directory for storing uploaded files (server-side)
-
-## Getting Started
-
-1. Clone the repository
-2. Install dependencies: `pnpm install`
-3. Run development server: `pnpm run dev`
-4. Build for production: `pnpm run build`
-5. Start production server: `pnpm run start`
-
-## Installation
-
-```bash
-pnpm install
-```
-
-## Running the Application
-
-```bash
-pnpm run start
-```
-
+MIT

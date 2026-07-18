@@ -1,7 +1,18 @@
 {
   "name": "cloudvault",
   "version": "0.1.0",
-  "private": true,
+  "description": "Self-hosted file storage and management web application",
+  "license": "MIT",
+  "bin": {
+    "cloudvault": "./bin/cloudvault.js"
+  },
+  "files": [
+    "bin",
+    "build/standalone/build",
+    "build/standalone/node_modules",
+    "build/standalone/package.json",
+    "build/standalone/server.js"
+  ],
   "engines": {
     "node": ">=24.0.0"
   },
@@ -10,7 +21,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "package": "bash scripts/package.sh"
+    "package": "bash scripts/package.sh",
+    "prepublishOnly": "pnpm run build && cp -r build/static build/standalone/build/static"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

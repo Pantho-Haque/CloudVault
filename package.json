@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "Self-hosted file storage and management web application",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Pantho-Haque/CloudVault.git"
+  },
   "bin": {
     "cloudvault": "./bin/cloudvault.js"
   },

@@ -26,28 +26,29 @@ A file storage and management web application built with Next.js 15 App Router.
 
 ```
 bin/
-  cloudvault.js                  — CLI entry point (Node check, config, standalone server launcher)
+  cloudvault.js                  — CLI entry point (Node check, config, standalone server launcher, LAN IP display)
 app/
   page.tsx                      — Redirects to /files
   layout.tsx                    — Root layout with Geist fonts, ThemeProvider
-  globals.css                   — CSS variables for light/dark themes + Tailwind theme
+  globals.css                   — CSS variables for light/dark themes + Tailwind theme + mobile touch targets
   login/page.tsx                — Login form
   setup/page.tsx                — First-time admin setup
   change-password/page.tsx      — Mandatory password change
   files/[[...path]]/page.tsx    — Catch-all route for file browser
-  admin/page.tsx                — Admin dashboard (users, sessions, stats)
-  shared/[id]/page.tsx          — Public shared file download page
+  admin/page.tsx                — Admin dashboard (users, sessions, stats, audit log)
+  shared/[id]/page.tsx          — Public shared file download page (file icon, name, password UI)
+  instrumentation.ts            — Server-side startup hook (runs runStartup at boot, not on first request)
   api/
-    files/route.ts              — File CRUD, SSE streaming, pagination, storage stats
-    files/batch/route.ts        — Batch delete/move
+    files/route.ts              — File CRUD, SSE streaming, pagination, storage stats (real disk quota via statfs)
+    files/batch/route.ts        — Batch delete/move (folders go to trash)
     files/folders/route.ts      — Create/rename folders
     files/folder-stats/route.ts — Recursive folder size/count
-    files/move/route.ts         — Move files/folders
+    files/move/route.ts         — Move/rename files/folders
     files/search/route.ts       — Server-side search (name, type, size, date)
     files/share/route.ts        — Share link CRUD (GET lists all user's links)
     files/thumbnail/route.ts    — File type thumbnails (SVG badges for non-images)
     files/preview/route.ts      — Full-resolution file preview for modal
-    files/trash/route.ts        — Trash management (supports JSON body)
+    files/trash/route.ts        — Trash management (folders restored via refreshManifest)
     files/versions/route.ts     — File versioning
     auth/login/route.ts         — Login
     auth/logout/route.ts        — Logout
@@ -60,29 +61,31 @@ app/
     health/route.ts             — Health check
   components/
     layout/
-      Sidebar.tsx               — Sidebar (nav, storage breakdown, theme toggle, shortcuts, user profile)
-      TopBar.tsx                — Breadcrumbs, server-side search, view toggle, upload, new folder
+      Sidebar.tsx               — Desktop: sidebar nav + storage. Mobile: bottom nav bar + drawer for settings
+      TopBar.tsx                — Breadcrumbs (collapsed on mobile), search overlay, view toggle
       Header.tsx                — Legacy header (still exported)
       Footer.tsx                — Legacy footer
-      ServiceWorkerRegistration.tsx
+      ServiceWorkerRegistration.tsx — PWA update detection + refresh banner
     files/
-      FileBrowser.tsx           — Main orchestrator (infinite scroll, SSE, keyboard shortcuts, search)
+      FileBrowser.tsx           — Main orchestrator (infinite scroll, SSE, keyboard shortcuts, search, mobile FAB)
       FileList.tsx              — Sort, search results, selection, select-all, infinite scroll sentinel
-      FileListTable.tsx         — Table view with canvas-resized thumbnails, CSS containment
-      FileGridView.tsx          — Grid view with canvas-resized thumbnails
-      FileDetailsModal.tsx      — Large preview modal (LRU cache of 4, circular arrow nav, Esc close)
-      FileUploader.tsx          — File/folder upload with global progress callback
+      FileListTable.tsx         — Table view (hidden columns on mobile, 44px touch targets, match highlighting)
+      FileGridView.tsx          — Grid view (2-6 responsive cols, touch-friendly action buttons)
+      FileDetailsModal.tsx      — Full-screen on mobile, stacked layout, rename/download/share/delete
+      FileUploader.tsx          — Upload with conflict detection (overwrite/skip), retry on failure
       FileStatistics.tsx        — Slide-in stats panel
       SearchBar.tsx             — Search input
-      ShareLinkModal.tsx        — Share link creation form
-      ShareLinksView.tsx        — Shared links management (file info, folder navigation)
+      ShareLinkModal.tsx        — Share link creation with QR code
+      ShareLinksView.tsx        — Shared links management with QR code popup
+      StoragePanel.tsx          — Disk usage donut chart, category breakdown, file type table
       TrashView.tsx             — Trash management
       LazyThumbnail.tsx         — Canvas-resized thumbnails (32x32, JPEG 0.2, IntersectionObserver)
       UploadProgressPopover.tsx — Floating upload progress indicator (auto-dismiss, close button)
     admin/
       AdminDashboard.tsx        — Stats cards
-      AdminUserTable.tsx        — User management table
-      AdminSessionList.tsx      — Active sessions
+      AdminUserTable.tsx        — User management table (44px touch targets)
+      AdminSessionList.tsx      — Active sessions (44px touch targets)
+      AdminAuditLog.tsx         — Audit log viewer (filterable by action/user, paginated)
       ConfirmDialog.tsx         — Confirmation dialogs
       Toast.tsx                 — Toast notifications
     providers/
@@ -95,8 +98,8 @@ lib/
   auth.ts                       — Password hashing, session management, RBAC, brute-force protection
   storage.ts                    — In-memory file manifest, system dir filtering (.trash, .thumbs, .versions)
   sse.ts                        — Server-Sent Events for real-time updates
-  startup.ts                    — Initial setup, credential generation
-  operations.ts                 — formatFileSize, formatDate, formatTimeAgo
+  startup.ts                    — Initial setup, credential generation (runs at server boot via instrumentation.ts)
+  operations.ts                 — formatFileSize, formatDate, formatTimeAgo (handles empty/invalid dates)
   fileIcons.tsx                 — File extension to icon mapping
 types/
   node-sqlite.d.ts              — Type declarations for node:sqlite

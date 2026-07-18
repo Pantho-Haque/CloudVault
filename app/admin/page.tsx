@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminUserTable from "@/components/admin/AdminUserTable";
 import AdminSessionList from "@/components/admin/AdminSessionList";
+import AdminAuditLog from "@/components/admin/AdminAuditLog";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import ToastContainer from "@/components/admin/Toast";
 
@@ -316,12 +317,21 @@ export default function AdminPage() {
           />
         </div>
 
-        <div className="bg-[var(--color-surface)] rounded-2xl overflow-hidden border border-[var(--color-border)]">
+        <div className="bg-[var(--color-surface)] rounded-2xl overflow-hidden border border-[var(--color-border)] mb-6">
           <AdminSessionList
             sessions={sessions}
             onRevoke={handleRevokeSession}
             loading={loading}
           />
+        </div>
+
+        <div className="bg-[var(--color-surface)] rounded-2xl overflow-hidden border border-[var(--color-border)]">
+          <div className="p-5 border-b border-[var(--color-border)]">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Audit Log</h2>
+          </div>
+          <div className="p-5">
+            <AdminAuditLog />
+          </div>
         </div>
       </main>
 

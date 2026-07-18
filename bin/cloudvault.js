@@ -41,9 +41,27 @@ fs.mkdirSync(path.dirname(process.env.DB_PATH), { recursive: true });
 const isFirstRun = !fs.existsSync(process.env.DB_PATH);
 const port = process.env.PORT;
 
+function getLanIp() {
+  const os = require("os");
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return null;
+}
+
+const lanIp = getLanIp();
+
 console.log("");
 console.log("  CloudVault v" + require(path.join(standaloneDir, "package.json")).version);
 console.log("  http://localhost:" + port);
+if (lanIp) {
+  console.log("  http://" + lanIp + ":" + port);
+}
 if (isFirstRun) {
   console.log("  First run — admin credentials will be printed below.");
 }

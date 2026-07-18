@@ -23,6 +23,20 @@ interface FileListTableProps {
   selectedPaths: string[];
   onToggleSelection: (path: string) => void;
   onLongPress: (path: string) => void;
+  searchTerm?: string;
+}
+
+function highlightMatch(text: string, term: string): React.ReactNode {
+  if (!term) return text;
+  const idx = text.toLowerCase().indexOf(term.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-500/30 text-[var(--color-text-primary)] rounded px-0.5">{text.slice(idx, idx + term.length)}</mark>
+      {text.slice(idx + term.length)}
+    </>
+  );
 }
 
 function timeAgo(dateStr: string): string {
@@ -106,6 +120,7 @@ export default function FileListTable({
   selectedPaths,
   onToggleSelection,
   onLongPress,
+  searchTerm,
 }: FileListTableProps) {
   const [showDetails, setShowDetails] = useState<FileEntry | null>(null);
   const [shareFile, setShareFile] = useState<FileEntry | null>(null);
@@ -155,23 +170,24 @@ export default function FileListTable({
         onNavigate={(idx) => setShowDetails(sortedFiles[idx])}
         onClose={() => setShowDetails(null)}
         onDelete={onDelete}
+        onRename={onDelete}
       />
       {shareFile && <ShareLinkModal filePath={shareFile.path} onClose={() => setShareFile(null)} />}
 
       <table className="w-full">
         <thead>
           <tr className="border-b border-[var(--color-border)]">
-            {selectionMode && <th className="w-10"></th>}
-            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider py-3 px-5">
+            {selectionMode && <th className="w-12"></th>}
+            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider py-3 px-4 md:px-5">
               Name
             </th>
-            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider py-3 px-5 w-32">
+            <th className="hidden sm:table-cell text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider py-3 px-5 w-32">
               Size
             </th>
-            <th className="text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider py-3 px-5 w-40">
+            <th className="hidden md:table-cell text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider py-3 px-5 w-40">
               Modified
             </th>
-            <th className="w-32"></th>
+            <th className="w-24 md:w-32"></th>
           </tr>
         </thead>
         <tbody>
@@ -205,31 +221,31 @@ export default function FileListTable({
                 onMouseLeave={() => setHoveredRow(null)}
               >
                 {selectionMode && (
-                  <td className="py-3 px-5 text-center" onClick={(e) => e.stopPropagation()}>
+                  <td className="py-3 px-4 md:px-5 text-center" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
-                      className="h-4 w-4 text-[var(--color-primary)] rounded focus:ring-[var(--color-focus-ring)]"
+                      className="h-5 w-5 text-[var(--color-primary)] rounded focus:ring-[var(--color-focus-ring)]"
                       checked={isSelected}
                       onChange={() => onToggleSelection(file.path)}
                     />
                   </td>
                 )}
-                <td className="py-3 px-5">
+                <td className="py-3 px-4 md:px-5">
                   <div className="flex items-center gap-3 min-w-0">
                     <SmallFileIcon filename={file.name} filePath={file.path} isDirectory={file.isDirectory} />
                     <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                      {file.name}
+                      {highlightMatch(file.name, searchTerm || "")}
                     </span>
                   </div>
                 </td>
-                <td className="py-3 px-5 text-sm text-[var(--color-text-muted)]">
+                <td className="hidden sm:table-cell py-3 px-5 text-sm text-[var(--color-text-muted)]">
                   {formatFileSize(file.size)}
                 </td>
-                <td className="py-3 px-5 text-sm text-[var(--color-text-muted)]">
+                <td className="hidden md:table-cell py-3 px-5 text-sm text-[var(--color-text-muted)]">
                   {timeAgo(file.modified)}
                 </td>
-                <td className="py-3 px-5" onClick={(e) => e.stopPropagation()}>
-                  <div className={`flex items-center justify-end gap-0.5 transition-opacity ${isHovered ? "opacity-100" : "opacity-0"}`}>
+                <td className="py-3 px-4 md:px-5" onClick={(e) => e.stopPropagation()}>
+                  <div className={`flex items-center justify-end gap-1 md:gap-0.5 ${isHovered ? "opacity-100" : "md:opacity-0"} opacity-100 md:opacity-0 transition-opacity`}>
                     {!file.isDirectory && (
                       <>
                         <button
@@ -237,7 +253,7 @@ export default function FileListTable({
                             e.stopPropagation();
                             window.open(`/api/files?fileName=${encodeURIComponent(file.name)}`, "_blank");
                           }}
-                          className="p-1.5 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-subtle)] transition-colors"
+                          className="p-2 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-subtle)] transition-colors"
                           title="Download"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -249,7 +265,7 @@ export default function FileListTable({
                             e.stopPropagation();
                             setShareFile(file);
                           }}
-                          className="p-1.5 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-subtle)] transition-colors"
+                          className="p-2 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-subtle)] transition-colors"
                           title="Share"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -264,7 +280,7 @@ export default function FileListTable({
                           ? handleDeleteFolder(file.path, e)
                           : handleDeleteFile(file.path, e)
                       }
-                      className="p-1.5 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-subtle)] transition-colors"
+                      className="p-2 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-subtle)] transition-colors"
                       title={file.isDirectory ? "Delete folder" : "Delete"}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

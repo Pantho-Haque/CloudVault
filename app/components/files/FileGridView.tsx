@@ -127,13 +127,13 @@ export default function FileGridView({
         onDelete={onDelete}
       />
       {shareFile && <ShareLinkModal filePath={shareFile.path} onClose={() => setShareFile(null)} />}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 items-start">
         {sortedFiles.map((file: FileEntry) => {
           const isSelected = selectedPaths.includes(file.path);
           return (
             <div
               key={file.path}
-              className={`rounded-xl p-4 transition-all cursor-pointer border group relative ${
+              className={`rounded-xl p-4 transition-all cursor-pointer border group relative flex flex-col items-center ${
                 isSelected
                   ? "bg-[var(--color-primary-subtle)] border-[var(--color-primary)]"
                   : "bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-strong)] hover:shadow-sm"
@@ -153,9 +153,9 @@ export default function FileGridView({
             >
               {selectionMode && (
                 <div className="absolute top-2 left-2">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 text-[var(--color-primary)] rounded focus:ring-[var(--color-focus-ring)]"
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 text-[var(--color-primary)] rounded focus:ring-[var(--color-focus-ring)]"
                     checked={isSelected}
                     onChange={() => onToggleSelection(file.path)}
                     onClick={(e) => e.stopPropagation()}
@@ -172,7 +172,7 @@ export default function FileGridView({
                 {formatFileSize(file.size)}
               </p>
               {!selectionMode && (
-                <div className="flex justify-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex justify-center gap-1.5 mt-3 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   {!file.isDirectory && (
                     <>
                       <button
@@ -180,7 +180,7 @@ export default function FileGridView({
                           e.stopPropagation();
                           window.open(`/api/files?fileName=${encodeURIComponent(file.name)}`, "_blank");
                         }}
-                        className="p-1.5 bg-[var(--color-primary-subtle)] text-[var(--color-primary)] rounded-lg hover:opacity-80 transition-colors"
+                        className="p-2 bg-[var(--color-primary-subtle)] text-[var(--color-primary)] rounded-lg hover:opacity-80 transition-colors"
                         title="Download"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -192,7 +192,7 @@ export default function FileGridView({
                           e.stopPropagation();
                           setShareFile(file);
                         }}
-                        className="p-1.5 bg-[var(--color-surface-raised)] text-[var(--color-icon-interactive)] rounded-lg hover:opacity-80 transition-colors"
+                        className="p-2 bg-[var(--color-surface-raised)] text-[var(--color-icon-interactive)] rounded-lg hover:opacity-80 transition-colors"
                         title="Share"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -203,7 +203,7 @@ export default function FileGridView({
                   )}
                   <button
                     onClick={(e) => handleDelete(file.path, file.isDirectory, e)}
-                    className="p-1.5 bg-[var(--color-danger-subtle)] text-[var(--color-danger)] rounded-lg hover:opacity-80 transition-colors"
+                    className="p-2 bg-[var(--color-danger-subtle)] text-[var(--color-danger)] rounded-lg hover:opacity-80 transition-colors"
                     title="Delete"
                   >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

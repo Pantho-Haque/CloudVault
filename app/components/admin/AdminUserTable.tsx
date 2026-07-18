@@ -139,7 +139,7 @@ export default function AdminUserTable({
                           value={user.role}
                           onChange={(e) => onRoleChange(user.id, e.target.value)}
                           disabled={isSelf}
-                          className="px-2 py-1 text-xs border border-[var(--color-border)] rounded bg-[var(--color-surface)] text-[var(--color-text-primary)] disabled:opacity-50"
+                          className="px-3 py-2 text-xs border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] text-[var(--color-text-primary)] disabled:opacity-50 min-h-[44px]"
                         >
                           <option value="read">Read</option>
                           <option value="write">Write</option>
@@ -147,7 +147,7 @@ export default function AdminUserTable({
                         </select>
                         <button
                           onClick={() => onForceLogout(user.id)}
-                          className="px-2 py-1 text-xs text-[var(--color-warning-text)] bg-[var(--color-warning-subtle)] rounded hover:opacity-80 transition-colors"
+                          className="px-3 py-2 text-xs text-[var(--color-warning-text)] bg-[var(--color-warning-subtle)] rounded-lg hover:opacity-80 transition-colors min-h-[44px]"
                           title="Revoke all sessions"
                         >
                           Revoke
@@ -155,7 +155,7 @@ export default function AdminUserTable({
                         {!isSelf && (
                           <button
                             onClick={() => onDelete(user.id)}
-                            className="px-2 py-1 text-xs text-[var(--color-danger-text)] bg-[var(--color-danger-subtle)] rounded hover:opacity-80 transition-colors"
+                            className="px-3 py-2 text-xs text-[var(--color-danger-text)] bg-[var(--color-danger-subtle)] rounded-lg hover:opacity-80 transition-colors min-h-[44px]"
                             title="Delete user"
                           >
                             Delete

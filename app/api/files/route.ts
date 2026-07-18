@@ -197,6 +197,7 @@ export async function POST(request: Request) {
   await ensureInitialized();
 
   try {
+    const { searchParams } = new URL(request.url);
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const targetDir = (formData.get("path") as string) || "";
@@ -220,6 +221,19 @@ export async function POST(request: Request) {
     const filePath = targetDir
       ? path.join(config.storageDir, targetDir, sanitizedName)
       : path.join(config.storageDir, sanitizedName);
+
+    const conflict = searchParams.get("conflict");
+    if (conflict !== "overwrite") {
+      try {
+        await fs.access(filePath);
+        return NextResponse.json(
+          { message: "File already exists", conflict: true, fileName: sanitizedName },
+          { status: 409 }
+        );
+      } catch {
+        // File doesn't exist, proceed
+      }
+    }
 
     const dir = path.dirname(filePath);
     await fs.mkdir(dir, { recursive: true });

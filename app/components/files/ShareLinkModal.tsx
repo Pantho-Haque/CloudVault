@@ -78,6 +78,16 @@ export default function ShareLinkModal({ filePath, onClose }: ShareLinkModalProp
             <div className="bg-[var(--color-success-subtle)] border border-[var(--color-success)] text-[var(--color-success-text)] px-4 py-3 rounded-lg text-sm">
               Share link created successfully!
             </div>
+            <div className="flex justify-center">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(result.url)}&bgcolor=000000&color=ffffff`}
+                alt="QR Code"
+                className="rounded-xl border border-[var(--color-border)]"
+                width={160}
+                height={160}
+              />
+            </div>
+            <p className="text-center text-[10px] text-[var(--color-text-muted)]">Scan to open on another device</p>
             <div className="flex items-center gap-2">
               <input
                 type="text"

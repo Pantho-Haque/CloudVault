@@ -29,6 +29,7 @@ export { default as TrashView } from "./files/TrashView";
 export { default as AdminDashboard } from "./admin/AdminDashboard";
 export { default as AdminUserTable } from "./admin/AdminUserTable";
 export { default as AdminSessionList } from "./admin/AdminSessionList";
+export { default as AdminAuditLog } from "./admin/AdminAuditLog";
 export { default as ConfirmDialog } from "./admin/ConfirmDialog";
 export { default as ToastContainer } from "./admin/Toast";
 

@@ -7,10 +7,11 @@ import { ArrowUpTrayIcon } from "@heroicons/react/24/outline";
 interface UploadItem {
   file: File;
   progress: number;
-  status: "queued" | "uploading" | "done" | "error";
+  status: "queued" | "uploading" | "done" | "error" | "conflict";
   previewUrl: string | null;
   previewType: "image" | "video" | "pdf" | "doc" | "xls" | "audio" | "generic" | null;
   relativePath: string;
+  overwrite?: boolean;
 }
 
 interface FileUploaderProps {
@@ -187,11 +188,20 @@ export default function FileUploader({ onFileUpload, currentPath = "" }: FileUpl
             }
           });
           xhr.onload = () => {
+            if (xhr.status === 409) {
+              const data = JSON.parse(xhr.responseText);
+              if (data.conflict) {
+                updateUpload(item.index, { status: "conflict" });
+                reject(new Error("conflict"));
+                return;
+              }
+            }
             if (xhr.status >= 200 && xhr.status < 300) resolve();
             else reject(new Error("Upload failed"));
           };
           xhr.onerror = () => reject(new Error("Upload failed"));
-          xhr.open("POST", "/api/files");
+          const uploadUrl = item.overwrite ? "/api/files?conflict=overwrite" : "/api/files";
+          xhr.open("POST", uploadUrl);
           xhr.send(formData);
         });
         updateUpload(item.index, { status: "done", progress: 100 });
@@ -216,6 +226,14 @@ export default function FileUploader({ onFileUpload, currentPath = "" }: FileUpl
     const item = uploads[index];
     if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
     setUploads((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const resolveConflict = (index: number, resolution: "overwrite" | "skip") => {
+    if (resolution === "skip") {
+      removeUpload(index);
+      return;
+    }
+    updateUpload(index, { status: "queued", progress: 0, overwrite: true });
   };
 
   const hasQueued = uploads.some((u) => u.status === "queued");
@@ -307,7 +325,32 @@ export default function FileUploader({ onFileUpload, currentPath = "" }: FileUpl
                     </span>
                   )}
                   {item.status === "error" && <span className="text-[var(--color-danger)]">Failed</span>}
+                  {item.status === "conflict" && <span className="text-amber-500">File exists</span>}
                 </span>
+                {item.status === "error" && (
+                  <button
+                    onClick={() => updateUpload(i, { status: "queued", progress: 0 })}
+                    className="px-3 py-1.5 text-xs font-medium bg-[var(--color-surface-raised)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-border)] transition-colors ml-1"
+                  >
+                    Retry
+                  </button>
+                )}
+                {item.status === "conflict" && (
+                  <div className="flex items-center gap-1 ml-1">
+                    <button
+                      onClick={() => resolveConflict(i, "overwrite")}
+                      className="px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-500 rounded-lg hover:bg-amber-500/20 transition-colors"
+                    >
+                      Overwrite
+                    </button>
+                    <button
+                      onClick={() => resolveConflict(i, "skip")}
+                      className="px-3 py-1.5 text-xs font-medium bg-[var(--color-surface-raised)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-border)] transition-colors"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                )}
                 {item.status === "queued" && (
                   <button
                     onClick={() => removeUpload(i)}

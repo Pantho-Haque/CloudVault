@@ -1,4 +1,4 @@
-const CACHE_NAME = "cloudvault-v1";
+const CACHE_NAME = "cloudvault-v2";
 const STATIC_ASSETS = [
   "/",
   "/login",
@@ -23,10 +23,17 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
-  // Don't cache API calls or auth-related requests
+  if (request.method !== "GET") return;
+
   if (
     request.url.includes("/api/") ||
     request.url.includes("/login") ||

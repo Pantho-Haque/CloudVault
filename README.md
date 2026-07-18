@@ -10,14 +10,19 @@ Self-hosted file storage and management — run it with one command, access it f
 
 - Folder-based file browser with drag-and-drop upload
 - Real-time updates via Server-Sent Events (no page refresh)
-- Server-side search across all files (name, type, size, date)
-- File trash with configurable retention (auto-purge after 30 days)
+- Server-side search across all files (name, type, size, date) with match highlighting
+- File trash with configurable retention (auto-purge after 30 days) — folders go to trash too
 - File versioning with configurable max versions per file
-- Password-protected share links with optional expiry and download limits
-- Admin panel with user management (admin / write / read roles)
+- Password-protected share links with QR codes, optional expiry and download limits
+- Admin panel with user management, audit log viewer, and session management
 - Forced password change on first login
-- PWA installable — add to home screen on phone or desktop
+- PWA installable with update notifications — add to home screen on phone or desktop
 - Infinite scroll for large file collections
+- Dynamic disk quota display (shows actual device storage, not hardcoded)
+- Storage statistics panel with donut chart, category breakdown, and file type details
+- Responsive design: bottom nav on mobile, full sidebar on desktop
+- Rename files directly from the preview modal
+- Upload conflict detection (overwrite / skip / retry on failure)
 - Keyboard shortcuts: Ctrl+U (upload), Ctrl+K (search), N (new folder)
 
 ## Quick Start
@@ -51,7 +56,7 @@ pkg update && pkg install nodejs
 npx cloudvault@latest
 ```
 
-The server will be reachable at `http://localhost:3000` from the phone's own browser. To access it from another device on the same network, find your phone's LAN address in the terminal output (printed as `Network  : http://<ip>:3000`), or check your phone's Wi-Fi settings.
+The server will be reachable at `http://localhost:3000` from the phone's own browser. To access it from another device on the same network, the CLI prints your LAN IP address in the terminal (e.g. `http://192.168.1.42:3000`).
 
 ### Linux
 

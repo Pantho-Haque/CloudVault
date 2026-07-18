@@ -18,6 +18,7 @@ interface FileDetailsModalProps {
   onNavigate?: (index: number) => void;
   onClose: () => void;
   onDelete?: () => void;
+  onRename?: () => void;
 }
 
 const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp"]);
@@ -253,7 +254,7 @@ function FilePreview({ file }: { file: FileEntry | null }) {
   return <GenericPreview file={file} />;
 }
 
-export default function FileDetailsModal({ file, files = [], onNavigate, onClose, onDelete }: FileDetailsModalProps) {
+export default function FileDetailsModal({ file, files = [], onNavigate, onClose, onDelete, onRename }: FileDetailsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [showShareForm, setShowShareForm] = useState(false);
   const [sharePassword, setSharePassword] = useState("");
@@ -304,6 +305,29 @@ export default function FileDetailsModal({ file, files = [], onNavigate, onClose
   const handleDownload = () => {
     if (!file?.path) return;
     window.open(`/api/files?fileName=${encodeURIComponent(file.name)}`, "_blank");
+  };
+
+  const handleRename = async () => {
+    if (!file?.path) return;
+    const ext = file.name.includes(".") ? "." + file.name.split(".").pop() : "";
+    const base = file.name.replace(/\.[^.]+$/, "");
+    const newName = prompt("Rename file:", base);
+    if (!newName || newName === base) return;
+    const sanitized = newName.replace(/[^\w\s.\-()]/gi, "") + ext;
+    const parentPath = file.path.includes("/") ? file.path.substring(0, file.path.lastIndexOf("/")) : "";
+    const destPath = parentPath ? `${parentPath}/${sanitized}` : sanitized;
+    try {
+      const res = await fetch("/api/files/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: file.path, destination: destPath }),
+      });
+      if (res.ok) {
+        lruRef.current.evict(file.path);
+        if (onRename) onRename();
+        onClose();
+      }
+    } catch {}
   };
 
   const handleDelete = async () => {
@@ -367,11 +391,10 @@ export default function FileDetailsModal({ file, files = [], onNavigate, onClose
   const extLabel = ext.toUpperCase() || "FILE";
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end md:items-center justify-center z-50 md:p-4" onClick={onClose}>
       <div
         ref={modalRef}
-        className="bg-[var(--color-surface)] rounded-2xl shadow-2xl border border-[var(--color-border)] flex flex-col overflow-hidden"
-        style={{ width: "min(85vw, 1400px)", height: "min(95vh, 900px)" }}
+        className="bg-[var(--color-surface)] md:rounded-2xl shadow-2xl border border-[var(--color-border)] flex flex-col overflow-hidden w-full h-full md:w-auto md:h-auto md:max-w-[min(85vw,1400px)] md:max-h-[min(95vh,900px)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] shrink-0">
@@ -387,26 +410,26 @@ export default function FileDetailsModal({ file, files = [], onNavigate, onClose
           <div className="flex items-center gap-1 shrink-0 ml-2">
             {nonDirFiles.length > 1 && (
               <>
-                <button onClick={() => navigate("prev")} className="p-1.5 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-raised)] transition-colors" title="Previous (Left arrow)">
+                <button onClick={() => navigate("prev")} className="p-2.5 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-raised)] transition-colors" title="Previous (Left arrow)">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                 </button>
-                <button onClick={() => navigate("next")} className="p-1.5 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-raised)] transition-colors" title="Next (Right arrow)">
+                <button onClick={() => navigate("next")} className="p-2.5 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-raised)] transition-colors" title="Next (Right arrow)">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>
               </>
             )}
-            <button onClick={onClose} className="p-1.5 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-raised)] transition-colors">
+            <button onClick={onClose} className="p-2.5 rounded-lg text-[var(--color-icon-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-raised)] transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
         </div>
 
-        <div className="flex flex-1 min-h-0">
-          <div className="flex-1 min-w-0">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0">
+          <div className="flex-1 min-w-0 min-h-0">
             <FilePreview file={file} />
           </div>
 
-          <div className="w-80 shrink-0 border-l border-[var(--color-border)] flex flex-col overflow-y-auto">
+          <div className="w-full md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-[var(--color-border)] flex flex-col overflow-y-auto max-h-[40vh] md:max-h-none">
             {!showShareForm ? (
               <>
                 <div className="p-5 space-y-4">
@@ -444,6 +467,10 @@ export default function FileDetailsModal({ file, files = [], onNavigate, onClose
                   <button onClick={handleDownload} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--color-primary)] text-white rounded-xl text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                     Download
+                  </button>
+                  <button onClick={handleRename} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] border border-[var(--color-border)] rounded-xl text-sm font-medium hover:bg-[var(--color-border-subtle)] transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                    Rename
                   </button>
                   <button onClick={() => { resetShare(); setShowShareForm(true); }} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] border border-[var(--color-border)] rounded-xl text-sm font-medium hover:bg-[var(--color-border-subtle)] transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>

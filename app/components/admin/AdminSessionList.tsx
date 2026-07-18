@@ -62,7 +62,7 @@ export default function AdminSessionList({ sessions, onRevoke, loading }: AdminS
               </div>
               <button
                 onClick={() => onRevoke(session.id)}
-                className="px-2 py-1 text-xs text-[var(--color-danger-text)] bg-[var(--color-danger-subtle)] rounded hover:opacity-80 transition-colors shrink-0"
+                className="px-3 py-2 text-xs text-[var(--color-danger-text)] bg-[var(--color-danger-subtle)] rounded-lg hover:opacity-80 transition-colors shrink-0 min-h-[44px]"
               >
                 Revoke
               </button>

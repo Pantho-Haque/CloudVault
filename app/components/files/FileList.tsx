@@ -233,6 +233,7 @@ export default function FileList({
             selectedPaths={selectedPaths}
             onToggleSelection={toggleFileSelection}
             onLongPress={handleLongPress}
+            searchTerm={searchTerm}
           />
         )}
 

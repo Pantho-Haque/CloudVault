@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "@/components";
 
 interface User {
@@ -18,6 +18,7 @@ interface StorageInfo {
 interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
+  storageVersion?: number;
 }
 
 function formatBytes(bytes: number): string {
@@ -58,7 +59,7 @@ function getExtColor(ext: string): string {
   return STORAGE_COLORS[ext] || "#6b7280";
 }
 
-export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
+export default function Sidebar({ activeView, onViewChange, storageVersion = 0 }: SidebarProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [storage, setStorage] = useState<StorageInfo | null>(null);
@@ -80,14 +81,7 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
     return () => document.removeEventListener("keydown", handleKey);
   }, []);
 
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.authenticated) setUser(data.user);
-      })
-      .catch(() => {});
-
+  const fetchStorage = useCallback(() => {
     fetch("/api/files?resource=storage")
       .then((r) => r.json())
       .then((data) => {
@@ -104,6 +98,21 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.authenticated) setUser(data.user);
+      })
+      .catch(() => {});
+
+    fetchStorage();
+  }, [fetchStorage]);
+
+  useEffect(() => {
+    if (storageVersion > 0) fetchStorage();
+  }, [storageVersion, fetchStorage]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });

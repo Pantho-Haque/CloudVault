@@ -40,6 +40,7 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<FileEntry[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [storageVersion, setStorageVersion] = useState(0);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const fetchIdRef = useRef(0);
@@ -189,6 +190,7 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
       if (activeViewRef.current === "files") {
         fetchFiles(currentPathRef.current);
       }
+      setStorageVersion((v) => v + 1);
     });
 
     eventSource.onerror = () => {};
@@ -267,7 +269,7 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
 
   return (
     <div className="h-screen flex overflow-hidden bg-[var(--color-background)]">
-      <Sidebar activeView={activeView} onViewChange={handleViewChange} />
+      <Sidebar activeView={activeView} onViewChange={handleViewChange} storageVersion={storageVersion} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {activeView === "files" && (
@@ -307,7 +309,7 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
           {activeView === "trash" && <TrashView onRestore={() => fetchFiles(currentPath)} />}
           {activeView === "storage" && (
             <div className="p-6 max-w-3xl mx-auto">
-              <StoragePanel />
+              <StoragePanel storageVersion={storageVersion} />
             </div>
           )}
         </main>

@@ -38,11 +38,15 @@ export async function GET(request: Request) {
       const { requireAuth } = await import("@/lib/auth");
       await requireAuth(request);
       const { getAllEntries } = await import("@/lib/storage");
+      const { statfsSync } = await import("fs");
       const entries = getAllEntries();
       const totalUsed = entries.reduce((sum, f) => sum + (f.size || 0), 0);
-      return NextResponse.json({ storageUsed: totalUsed, storageQuota: 21474836480 });
+      const disk = statfsSync(config.storageDir);
+      const diskTotal = disk.blocks * disk.bsize;
+      const diskAvail = disk.bavail * disk.bsize;
+      return NextResponse.json({ storageUsed: totalUsed, storageQuota: diskTotal, storageAvailable: diskAvail });
     } catch {
-      return NextResponse.json({ storageUsed: 0, storageQuota: 21474836480 });
+      return NextResponse.json({ storageUsed: 0, storageQuota: 0, storageAvailable: 0 });
     }
   }
 

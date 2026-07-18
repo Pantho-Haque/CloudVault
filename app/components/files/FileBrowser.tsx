@@ -7,6 +7,7 @@ import FileList from "./FileList";
 import FileUploader from "./FileUploader";
 import ShareLinksView from "./ShareLinksView";
 import TrashView from "./TrashView";
+import StoragePanel from "./StoragePanel";
 import UploadProgressPopover from "./UploadProgressPopover";
 
 interface FileEntry {
@@ -304,6 +305,11 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
           )}
           {activeView === "shared" && <ShareLinksView />}
           {activeView === "trash" && <TrashView onRestore={() => fetchFiles(currentPath)} />}
+          {activeView === "storage" && (
+            <div className="p-6 max-w-3xl mx-auto">
+              <StoragePanel />
+            </div>
+          )}
         </main>
       </div>
 

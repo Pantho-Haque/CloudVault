@@ -6,9 +6,11 @@ A file storage and management web application built with Next.js 15 App Router.
 
 - `pnpm install` — install dependencies
 - `pnpm run dev` — start dev server (Turbopack)
-- `pnpm run build` — production build
+- `pnpm run build` — production build (standalone output in `build/standalone/`)
 - `pnpm run start` — start production server
 - `pnpm run lint` — lint with ESLint (next/core-web-vitals + next/typescript)
+- `npx cloudvault@latest` — run from npm (end-user install method)
+- `npm publish --provenance --access public` — publish to npm (handled by CI)
 
 ## Tech Stack
 
@@ -18,10 +20,13 @@ A file storage and management web application built with Next.js 15 App Router.
 - **Styling**: TailwindCSS v4 (via @tailwindcss/postcss)
 - **Icons**: @heroicons/react
 - **Drag & Drop**: react-drag-drop-files
+- **Database**: SQLite via `node:sqlite` (requires Node 24+)
 
 ## Project Structure
 
 ```
+bin/
+  cloudvault.js                  — CLI entry point (Node check, config, standalone server launcher)
 app/
   page.tsx                      — Redirects to /files
   layout.tsx                    — Root layout with Geist fonts, ThemeProvider
@@ -114,6 +119,7 @@ build/                          — Build output (gitignored)
 - **PWA**: Service worker with cache-first strategy, web manifest for installability.
 - **Build output**: Custom `distDir: "build"` in next.config.ts. Standalone output.
 - **Path alias**: `@/*` maps to project root. `@components/*` also supported.
+- **npm distribution**: CLI at `bin/cloudvault.js` wraps standalone build. Published via GitHub Actions on `v*.*.*` tags. Uses npm provenance (OIDC). Package ships standalone server + CLI only (no source, no dev deps). Data defaults to `~/.cloudvault/`.
 
 ## Code Conventions
 

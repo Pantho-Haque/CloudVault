@@ -278,10 +278,15 @@ export async function DELETE(request: Request) {
     }
 
     try {
-      await fs.rm(folderPath, { recursive: true, force: true });
-      removeFromManifest(subpath ? `${subpath}/${folderName}` : folderName);
-      broadcastFileChange("deleted", subpath ? `${subpath}/${folderName}` : folderName);
-      return NextResponse.json({ message: "Folder deleted successfully", timestamp: Date.now() });
+      const trashDir = path.join(config.storageDir, ".trash");
+      await fs.mkdir(trashDir, { recursive: true });
+      const trashPath = path.join(trashDir, `${Date.now()}_${folderName.replace(/[\/\\]/g, "_")}`);
+      await fs.rename(folderPath, trashPath);
+
+      const relativePath = subpath ? `${subpath}/${folderName}` : folderName;
+      removeFromManifest(relativePath);
+      broadcastFileChange("deleted", relativePath);
+      return NextResponse.json({ message: "Folder moved to trash", timestamp: Date.now() });
     } catch {
       return NextResponse.json({ message: "Error deleting folder" }, { status: 500 });
     }

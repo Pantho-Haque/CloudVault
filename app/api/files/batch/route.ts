@@ -25,7 +25,10 @@ export async function POST(request: Request) {
           const stats = await fs.stat(fullPath);
 
           if (stats.isDirectory()) {
-            await fs.rm(fullPath, { recursive: true, force: true });
+            const trashDir = path.join(config.storageDir, ".trash");
+            await fs.mkdir(trashDir, { recursive: true });
+            const trashPath = path.join(trashDir, `${Date.now()}_${path.basename(filePath).replace(/[\/\\]/g, "_")}`);
+            await fs.rename(fullPath, trashPath);
           } else {
             const trashDir = path.join(config.storageDir, ".trash");
             await fs.mkdir(trashDir, { recursive: true });

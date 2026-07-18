@@ -9,9 +9,9 @@ const ThemeContext = createContext<{
   setTheme: (theme: Theme) => void;
   resolvedTheme: "light" | "dark";
 }>({
-  theme: "system",
+  theme: "dark",
   setTheme: () => {},
-  resolvedTheme: "light",
+  resolvedTheme: "dark",
 });
 
 export function useTheme() {
@@ -19,12 +19,13 @@ export function useTheme() {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("system");
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<Theme>("dark");
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
 
   useEffect(() => {
     const saved = localStorage.getItem("theme") as Theme | null;
     if (saved) setTheme(saved);
+    else document.documentElement.classList.add("dark");
   }, []);
 
   useEffect(() => {

@@ -118,9 +118,30 @@ export async function GET(request: Request) {
   // List files in directory
   try {
     await ensureStorageDir();
-    const files = getFiles(subpath);
+    const allFiles = getFiles(subpath);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const limit = parseInt(searchParams.get("limit") || "0", 10);
+    const total = allFiles.length;
+
+    if (limit > 0) {
+      const files = allFiles.slice(offset, offset + limit);
+      return NextResponse.json({
+        files,
+        total,
+        offset,
+        limit,
+        hasMore: offset + limit < total,
+        timestamp: Date.now(),
+        path: subpath,
+      });
+    }
+
     return NextResponse.json({
-      files,
+      files: allFiles,
+      total,
+      offset: 0,
+      limit: 0,
+      hasMore: false,
       timestamp: Date.now(),
       path: subpath,
     });

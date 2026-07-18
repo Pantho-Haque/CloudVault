@@ -68,9 +68,7 @@ export default function AdminPage() {
       const res = await fetch("/api/auth/admin?resource=stats");
       const data = await res.json();
       if (data.stats) setStats(data.stats);
-    } catch {
-      // stats are non-critical
-    }
+    } catch {}
   };
 
   const loadSessions = async () => {
@@ -78,9 +76,7 @@ export default function AdminPage() {
       const res = await fetch("/api/auth/admin?resource=sessions");
       const data = await res.json();
       if (data.sessions) setSessions(data.sessions);
-    } catch {
-      // sessions are non-critical
-    }
+    } catch {}
   };
 
   const loadAll = useCallback(async () => {
@@ -146,7 +142,7 @@ export default function AdminPage() {
     setConfirmDialog({
       open: true,
       title: "Revoke Sessions",
-      message: `This will force ${user?.username ?? "this user"} to log out on all devices. They can log back in.`,
+      message: `This will force ${user?.username ?? "this user"} to log out on all devices.`,
       onConfirm: async () => {
         try {
           await fetch(`/api/auth/admin?userId=${userId}&action=logout`, { method: "DELETE" });
@@ -165,7 +161,7 @@ export default function AdminPage() {
     setConfirmDialog({
       open: true,
       title: "Delete User",
-      message: `Are you sure you want to delete "${user?.username}"? This action cannot be undone and will remove all their data.`,
+      message: `Are you sure you want to delete "${user?.username}"? This action cannot be undone.`,
       onConfirm: async () => {
         try {
           await fetch(`/api/auth/admin?userId=${userId}`, { method: "DELETE" });
@@ -204,20 +200,20 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-950">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--color-primary)]"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--color-primary)]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-[var(--color-surface-sunken)] dark:to-[var(--color-surface)]">
-      <header className="bg-[var(--color-surface)] shadow-sm border-b border-[var(--color-border)]">
+    <div className="min-h-screen bg-[var(--color-background)]">
+      <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)]">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-xl">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
             </div>
             <div>
@@ -228,13 +224,13 @@ export default function AdminPage() {
           <div className="flex gap-2">
             <button
               onClick={() => router.push("/files")}
-              className="px-3 py-2 text-sm text-[var(--color-text-secondary)] bg-[var(--color-surface-sunken)] rounded-lg hover:bg-[var(--color-border-subtle)] transition-colors"
+              className="px-4 py-2 text-sm text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] border border-[var(--color-border)] rounded-xl hover:bg-[var(--color-border-subtle)] transition-colors"
             >
               Back to Files
             </button>
             <button
               onClick={handleLogout}
-              className="px-3 py-2 text-sm text-[var(--color-text-on-primary)] bg-[var(--color-danger)] rounded-lg hover:opacity-90 transition-colors"
+              className="px-4 py-2 text-sm text-[var(--color-danger)] bg-[var(--color-danger-subtle)] rounded-xl hover:opacity-80 transition-colors"
             >
               Logout
             </button>
@@ -245,20 +241,19 @@ export default function AdminPage() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         <AdminDashboard stats={stats} loading={loading} />
 
-        {/* Users Section */}
-        <div className="bg-[var(--color-surface)] rounded-xl shadow-md overflow-hidden border border-[var(--color-border-subtle)] mb-6">
-          <div className="p-4 border-b border-[var(--color-divider)] flex justify-between items-center">
+        <div className="bg-[var(--color-surface)] rounded-2xl overflow-hidden border border-[var(--color-border)] mb-6">
+          <div className="p-5 border-b border-[var(--color-border)] flex justify-between items-center">
             <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Users</h2>
             <button
               onClick={() => setShowCreate(!showCreate)}
-              className="px-4 py-2 bg-[var(--color-primary)] text-[var(--color-text-on-primary)] text-sm rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-[var(--color-primary)] text-white text-sm rounded-xl hover:bg-[var(--color-primary-hover)] transition-colors flex items-center gap-1.5"
             >
               {showCreate ? (
                 <>Cancel</>
               ) : (
                 <>
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
                   Add User
                 </>
@@ -267,7 +262,7 @@ export default function AdminPage() {
           </div>
 
           {showCreate && (
-            <div className="p-4 bg-[var(--color-surface-raised)] border-b border-[var(--color-divider)]">
+            <div className="p-5 bg-[var(--color-surface-raised)] border-b border-[var(--color-border)]">
               <form onSubmit={handleCreateUser} className="flex flex-wrap gap-3 items-end">
                 <div>
                   <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Username</label>
@@ -275,7 +270,7 @@ export default function AdminPage() {
                     type="text"
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
-                    className="px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-placeholder)] focus:ring-2 focus:ring-[var(--color-focus-ring)] outline-none"
+                    className="px-3 py-2 border border-[var(--color-border)] rounded-xl text-sm bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-placeholder)] focus:ring-2 focus:ring-[var(--color-focus-ring)] outline-none"
                     required
                   />
                 </div>
@@ -285,7 +280,7 @@ export default function AdminPage() {
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-placeholder)] focus:ring-2 focus:ring-[var(--color-focus-ring)] outline-none"
+                    className="px-3 py-2 border border-[var(--color-border)] rounded-xl text-sm bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-placeholder)] focus:ring-2 focus:ring-[var(--color-focus-ring)] outline-none"
                     required
                     minLength={6}
                   />
@@ -295,7 +290,7 @@ export default function AdminPage() {
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
-                    className="px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-focus-ring)] outline-none"
+                    className="px-3 py-2 border border-[var(--color-border)] rounded-xl text-sm bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-focus-ring)] outline-none"
                   >
                     <option value="read">Read Only</option>
                     <option value="write">Read + Write</option>
@@ -304,7 +299,7 @@ export default function AdminPage() {
                 </div>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[var(--color-success)] text-[var(--color-text-on-primary)] text-sm rounded-lg hover:opacity-90 transition-colors"
+                  className="px-4 py-2 bg-[var(--color-success)] text-white text-sm rounded-xl hover:opacity-90 transition-colors"
                 >
                   Create
                 </button>
@@ -321,8 +316,7 @@ export default function AdminPage() {
           />
         </div>
 
-        {/* Sessions Section */}
-        <div className="bg-[var(--color-surface)] rounded-xl shadow-md overflow-hidden border border-[var(--color-border-subtle)]">
+        <div className="bg-[var(--color-surface)] rounded-2xl overflow-hidden border border-[var(--color-border)]">
           <AdminSessionList
             sessions={sessions}
             onRevoke={handleRevokeSession}

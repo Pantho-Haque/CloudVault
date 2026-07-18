@@ -23,7 +23,6 @@ export async function GET() {
       const itemPath = path.join(trashDir, item);
       try {
         const stats = await fs.stat(itemPath);
-        // Extract original name: format is timestamp_originalName
         const underscoreIdx = item.indexOf("_");
         const originalName = underscoreIdx >= 0 ? item.slice(underscoreIdx + 1) : item;
         files.push({
@@ -61,12 +60,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "File not found in trash" }, { status: 404 });
     }
 
-    // Extract original name
     const underscoreIdx = trashName.indexOf("_");
     const originalName = underscoreIdx >= 0 ? trashName.slice(underscoreIdx + 1) : trashName;
 
     let restorePath = path.join(config.storageDir, originalName);
-    // Handle name conflicts by appending a number
     let counter = 1;
     while (true) {
       try {
@@ -108,11 +105,19 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   await ensureStorageDir();
 
+  let trashName: string | null = null;
+
   const { searchParams } = new URL(request.url);
-  const trashName = searchParams.get("trashName");
+  trashName = searchParams.get("trashName");
 
   if (!trashName) {
-    // Purge all
+    try {
+      const body = await request.json();
+      trashName = body.trashName;
+    } catch {}
+  }
+
+  if (!trashName) {
     try {
       const trashDir = path.join(config.storageDir, ".trash");
       await fs.rm(trashDir, { recursive: true, force: true });

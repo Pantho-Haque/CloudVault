@@ -4,7 +4,7 @@
   "description": "Secure file storage and management",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
+  "background_color": "#0a0e17",
   "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
   "icons": [

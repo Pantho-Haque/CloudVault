@@ -7,6 +7,8 @@ export { ThemeProvider, useTheme } from "./providers/ThemeProvider";
 
 // ── Layout ─────────────────────────────────
 export { default as Header } from "./layout/Header";
+export { default as Sidebar } from "./layout/Sidebar";
+export { default as TopBar } from "./layout/TopBar";
 export { default as Footer } from "./layout/Footer";
 export { default as ServiceWorkerRegistration } from "./layout/ServiceWorkerRegistration";
 
@@ -20,6 +22,8 @@ export { default as FileUploader } from "./files/FileUploader";
 export { default as FileStatistics } from "./files/FileStatistics";
 export { default as SearchBar } from "./files/SearchBar";
 export { default as ShareLinkModal } from "./files/ShareLinkModal";
+export { default as ShareLinksView } from "./files/ShareLinksView";
+export { default as TrashView } from "./files/TrashView";
 
 // ── Admin ──────────────────────────────────
 export { default as AdminDashboard } from "./admin/AdminDashboard";

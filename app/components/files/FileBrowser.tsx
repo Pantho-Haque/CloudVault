@@ -1,92 +1,155 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Header, FileList, FileStatistics } from "@/components";
-import { XMarkIcon } from "@heroicons/react/16/solid";
+import Sidebar from "../layout/Sidebar";
+import TopBar from "../layout/TopBar";
+import FileList from "./FileList";
+import FileUploader from "./FileUploader";
+import ShareLinksView from "./ShareLinksView";
+import TrashView from "./TrashView";
+import UploadProgressPopover from "./UploadProgressPopover";
 
-interface FolderStats {
-  totalSize: number;
-  fileCount: number;
-  folderCount: number;
+interface FileEntry {
+  name: string;
+  path: string;
+  size: number;
+  modified: string;
+  isDirectory: boolean;
 }
 
 interface FileBrowserProps {
   initialPath: string;
 }
 
+const PAGE_SIZE = 50;
+
 export default function FileBrowser({ initialPath }: FileBrowserProps) {
   const router = useRouter();
-  const [files, setFiles] = useState([]);
+  const [files, setFiles] = useState<FileEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showStats, setShowStats] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
   const [currentPath, setCurrentPath] = useState(initialPath);
-  const [folderStats, setFolderStats] = useState<FolderStats | null>(null);
+  const [activeView, setActiveView] = useState("files");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [showUploader, setShowUploader] = useState(false);
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [folderName, setFolderName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const eventSourceRef = useRef<EventSource | null>(null);
   const fetchIdRef = useRef(0);
+  const currentPathRef = useRef(currentPath);
+  const activeViewRef = useRef(activeView);
+
+  currentPathRef.current = currentPath;
+  activeViewRef.current = activeView;
+
+  useEffect(() => {
+    const saved = localStorage.getItem("viewMode") as "list" | "grid" | null;
+    if (saved) setViewMode(saved);
+  }, []);
 
   useEffect(() => {
     setCurrentPath(initialPath);
+    if (initialPath) setActiveView("files");
   }, [initialPath]);
 
-  const navigateTo = useCallback((newPath: string) => {
-    if (newPath) {
-      router.push(`/files/${newPath}`, { scroll: false });
-    } else {
-      router.push("/files", { scroll: false });
-    }
-  }, [router]);
+  const navigateTo = useCallback(
+    (newPath: string) => {
+      setActiveView("files");
+      if (newPath) {
+        router.push(`/files/${newPath}`, { scroll: false });
+      } else {
+        router.push("/files", { scroll: false });
+      }
+    },
+    [router]
+  );
 
-  const fetchFiles = useCallback(async (subpath: string = currentPath) => {
-    const id = ++fetchIdRef.current;
-    try {
-      const url = subpath ? `/api/files?path=${encodeURIComponent(subpath)}` : "/api/files";
-      const response = await fetch(url);
-      if (!response.ok) {
-        if (response.status === 401) {
-          window.location.href = "/login";
-          return;
+  const handleViewChange = useCallback(
+    (view: string) => {
+      if (view === "admin") {
+        window.location.href = "/admin";
+        return;
+      }
+      setActiveView(view);
+      if (view === "files") {
+        router.push("/files", { scroll: false });
+      }
+    },
+    [router]
+  );
+
+  const fetchFiles = useCallback(
+    async (subpath: string = currentPath) => {
+      const id = ++fetchIdRef.current;
+      try {
+        const url = subpath
+          ? `/api/files?path=${encodeURIComponent(subpath)}&offset=0&limit=${PAGE_SIZE}`
+          : `/api/files?offset=0&limit=${PAGE_SIZE}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = "/login";
+            return;
+          }
+          throw new Error("Failed to fetch files");
         }
-        throw new Error("Failed to fetch files");
+        const data = await response.json();
+        if (id === fetchIdRef.current) {
+          setFiles(data.files || []);
+          setHasMore(data.hasMore || false);
+          setTotalCount(data.total || 0);
+        }
+      } catch (error) {
+        console.error("Error fetching files:", error);
+      } finally {
+        if (id === fetchIdRef.current) {
+          setIsLoading(false);
+        }
       }
-      const data = await response.json();
-      if (id === fetchIdRef.current) {
-        setFiles(data.files || []);
-      }
-    } catch (error) {
-      console.error("Error fetching files:", error);
-    } finally {
-      if (id === fetchIdRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [currentPath]);
+    },
+    [currentPath]
+  );
 
-  const fetchFolderStats = useCallback(async (subpath: string = currentPath) => {
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
     try {
-      const url = subpath ? `/api/files/folder-stats?path=${encodeURIComponent(subpath)}` : "/api/files/folder-stats";
+      const offset = files.length;
+      const url = currentPath
+        ? `/api/files?path=${encodeURIComponent(currentPath)}&offset=${offset}&limit=${PAGE_SIZE}`
+        : `/api/files?offset=${offset}&limit=${PAGE_SIZE}`;
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        setFolderStats(data);
+        setFiles((prev) => [...prev, ...(data.files || [])]);
+        setHasMore(data.hasMore || false);
       }
-    } catch {
-      // non-critical
+    } catch (error) {
+      console.error("Error loading more files:", error);
+    } finally {
+      setIsLoadingMore(false);
     }
-  }, [currentPath]);
+  }, [currentPath, files.length, hasMore, isLoadingMore]);
 
   useEffect(() => {
-    setIsLoading(true);
-    fetchFiles(currentPath);
-    fetchFolderStats(currentPath);
-  }, [currentPath, fetchFiles, fetchFolderStats]);
+    if (activeView === "files") {
+      setIsLoading(true);
+      fetchFiles(currentPath);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPath, activeView]);
 
   useEffect(() => {
     const eventSource = new EventSource("/api/files?stream=1");
     eventSourceRef.current = eventSource;
 
     eventSource.addEventListener("file-change", () => {
-      fetchFiles(currentPath);
-      fetchFolderStats(currentPath);
+      if (activeViewRef.current === "files") {
+        fetchFiles(currentPathRef.current);
+      }
     });
 
     eventSource.onerror = () => {};
@@ -95,44 +158,132 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
       eventSource.close();
       eventSourceRef.current = null;
     };
-  }, [currentPath, fetchFiles, fetchFolderStats]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCreateFolder = async () => {
+    if (!folderName.trim()) return;
+    try {
+      const response = await fetch("/api/files/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: folderName.trim(),
+          parentPath: currentPath,
+        }),
+      });
+      if (response.ok) {
+        setFolderName("");
+        setShowNewFolder(false);
+        fetchFiles(currentPath);
+      }
+    } catch (error) {
+      console.error("Error creating folder:", error);
+    }
+  };
+
+  const handleUpload = () => {
+    setShowUploader(false);
+    fetchFiles(currentPath);
+  };
+
+  const breadcrumbs = currentPath
+    ? currentPath.split("/").filter(Boolean)
+    : [];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100 dark:from-[var(--color-surface-sunken)] dark:to-[var(--color-surface)]">
-      <Header currentPath={currentPath} setCurrentPath={navigateTo} onUpload={() => { fetchFiles(currentPath); fetchFolderStats(currentPath); }} />
+    <div className="h-screen flex overflow-hidden bg-[var(--color-background)]">
+      <Sidebar activeView={activeView} onViewChange={handleViewChange} />
 
-      <div className="container mx-auto max-w-6xl px-4 flex-1">
-        <div className="fixed right-0 bottom-10 z-50">
-          <button
-            onClick={() => setShowStats(!showStats)}
-            className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-text-on-primary)] p-3 rounded-l-lg shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </button>
-          <div className={`fixed right-0 bottom-25 bg-[var(--color-surface)] rounded-l-lg shadow-xl transition-all duration-500 ease-in-out border border-[var(--color-border)] ${showStats ? "translate-x-0" : "translate-x-full"}`}>
-            <div className="relative">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {activeView === "files" && (
+          <TopBar
+            breadcrumbs={breadcrumbs}
+            onNavigate={navigateTo}
+            onSearch={setSearchTerm}
+            viewMode={viewMode}
+            onToggleView={() => {
+              const next = viewMode === "list" ? "grid" : "list";
+              setViewMode(next);
+              localStorage.setItem("viewMode", next);
+            }}
+            onUpload={() => setShowUploader(true)}
+            onNewFolder={() => setShowNewFolder(true)}
+          />
+        )}
+
+        <main className="flex-1 overflow-auto">
+          {activeView === "files" && (
+            <FileList
+              files={files}
+              isLoading={isLoading}
+              isLoadingMore={isLoadingMore}
+              hasMore={hasMore}
+              totalCount={totalCount}
+              onLoadMore={loadMore}
+              onDelete={() => fetchFiles(currentPath)}
+              setCurrentPath={navigateTo}
+              viewMode={viewMode}
+              searchTerm={searchTerm}
+            />
+          )}
+          {activeView === "shared" && <ShareLinksView />}
+          {activeView === "trash" && <TrashView onRestore={() => fetchFiles(currentPath)} />}
+        </main>
+      </div>
+
+      {showUploader && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--color-surface)] rounded-2xl p-6 max-w-2xl w-full shadow-2xl border border-[var(--color-border)]">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-[var(--color-text-primary)]">Upload Files</h2>
               <button
-                onClick={() => setShowStats(false)}
-                className="absolute top-2 left-2 bg-[var(--color-surface-sunken)] rounded-full p-1 hover:bg-[var(--color-border-subtle)] transition-all duration-200 z-10"
+                onClick={() => setShowUploader(false)}
+                className="text-[var(--color-icon-muted)] hover:text-[var(--color-text-primary)] transition-colors"
               >
-                <XMarkIcon className="h-4 w-4 text-[var(--color-text-primary)]" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
-              <FileStatistics files={files} folderStats={folderStats} />
+            </div>
+            <FileUploader onFileUpload={handleUpload} currentPath={currentPath} />
+          </div>
+        </div>
+      )}
+
+      {showNewFolder && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[var(--color-surface)] rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl border border-[var(--color-border)]">
+            <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-4">Create New Folder</h2>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-placeholder)] rounded-xl focus:ring-2 focus:ring-[var(--color-focus-ring)] focus:border-[var(--color-focus-ring)] outline-none"
+              placeholder="Folder name"
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => { setShowNewFolder(false); setFolderName(""); }}
+                className="px-4 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateFolder}
+                disabled={!folderName.trim()}
+                className="px-4 py-2 text-white bg-[var(--color-primary)] rounded-xl hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Create
+              </button>
             </div>
           </div>
         </div>
+      )}
 
-        <div className="py-6">
-          <FileList
-            files={files}
-            isLoading={isLoading}
-            onDelete={() => { fetchFiles(currentPath); fetchFolderStats(currentPath); }}
-            setCurrentPath={navigateTo}
-          />
-        </div>
-      </div>
+      <UploadProgressPopover />
     </div>
   );
 }

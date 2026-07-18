@@ -266,10 +266,12 @@ export default function FileList({
           </button>
           <button
             onClick={async () => {
-              for (const p of selectedPaths) {
-                const name = p.split("/").pop() || "";
-                await fetch(`/api/files?fileName=${encodeURIComponent(name)}`, { method: "DELETE" });
-              }
+              if (!confirm(`Delete ${selectedPaths.length} item(s)?`)) return;
+              await fetch("/api/files/batch", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "delete", files: selectedPaths }),
+              });
               setSelectedPaths([]);
               setSelectionMode(false);
               onDelete();

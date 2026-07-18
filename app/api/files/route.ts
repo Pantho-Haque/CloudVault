@@ -10,7 +10,6 @@ import {
   removeFromManifest,
 } from "@/lib/storage";
 import { addClient, removeClient, broadcastFileChange, startKeepAlive } from "@/lib/sse";
-import { runStartup } from "@/lib/startup";
 
 startKeepAlive();
 
@@ -20,7 +19,6 @@ async function ensureInitialized() {
   if (!initialized) {
     await ensureStorageDir();
     await refreshManifest();
-    await runStartup();
     initialized = true;
   }
 }

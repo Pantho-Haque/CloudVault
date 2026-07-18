@@ -23,11 +23,13 @@ interface FileListProps {
   setCurrentPath: (path: string) => void;
   viewMode: "list" | "grid";
   searchTerm: string;
+  searchResults: FileEntry[] | null;
+  isSearching: boolean;
 }
 
 export default function FileList({
   files, isLoading, isLoadingMore, hasMore, totalCount, onLoadMore,
-  onDelete, setCurrentPath, viewMode, searchTerm,
+  onDelete, setCurrentPath, viewMode, searchTerm, searchResults, isSearching,
 }: FileListProps) {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "ascending" | "descending" }>({
     key: "name",
@@ -37,9 +39,7 @@ export default function FileList({
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const filteredFiles = files.filter((file: FileEntry) =>
-    file.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredFiles = searchResults !== null ? searchResults : files;
 
   const sortedFiles = [...filteredFiles].sort((a: FileEntry, b: FileEntry) => {
     if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
@@ -112,7 +112,16 @@ export default function FileList({
     );
   }
 
-  if (files.length === 0) {
+  if (isSearching) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-primary)]" />
+        <span className="ml-3 text-sm text-[var(--color-text-muted)]">Searching...</span>
+      </div>
+    );
+  }
+
+  if (files.length === 0 && !searchTerm) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="w-20 h-20 rounded-2xl bg-[var(--color-surface-raised)] flex items-center justify-center mb-4">
@@ -126,7 +135,7 @@ export default function FileList({
     );
   }
 
-  if (filteredFiles.length === 0) {
+  if (filteredFiles.length === 0 && (searchTerm || searchResults !== null)) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="w-20 h-20 rounded-2xl bg-[var(--color-surface-raised)] flex items-center justify-center mb-4">
@@ -147,6 +156,8 @@ export default function FileList({
           <span className="text-sm font-medium text-[var(--color-text-primary)]">
             {selectionMode
               ? `${selectedPaths.length} selected`
+              : searchTerm
+              ? `${filteredFiles.length} result${filteredFiles.length !== 1 ? "s" : ""}`
               : totalCount > 0
               ? `${filteredFiles.length}${hasMore ? "+" : ""} items`
               : `${filteredFiles.length} items`}

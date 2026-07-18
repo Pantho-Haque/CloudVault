@@ -1,12 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-
-interface User {
-  id: number;
-  username: string;
-  role: string;
-}
+import { useState, useRef, useEffect, useCallback } from "react";
 
 interface TopBarProps {
   breadcrumbs: string[];
@@ -27,21 +21,15 @@ export default function TopBar({
   onUpload,
   onNewFolder,
 }: TopBarProps) {
-  const [user, setUser] = useState<User | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.authenticated) setUser(data.user);
-      })
-      .catch(() => {});
-  }, []);
+  const handleCloseSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchTerm("");
+    onSearch("");
+  }, [onSearch]);
 
   useEffect(() => {
     if (searchOpen && searchInputRef.current) {
@@ -50,26 +38,27 @@ export default function TopBar({
   }, [searchOpen]);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowUserMenu(false);
+    const onFocusSearch = () => setSearchOpen(true);
+    window.addEventListener("cv:focus-search", onFocusSearch);
+    return () => window.removeEventListener("cv:focus-search", onFocusSearch);
+  }, []);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleCloseSearch();
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [searchOpen, handleCloseSearch]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
     onSearch(value);
   };
-
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
-  };
-
-  const initials = user?.username?.slice(0, 2).toUpperCase() || "U";
 
   return (
     <header className="h-14 shrink-0 flex items-center justify-between px-5 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -119,7 +108,7 @@ export default function TopBar({
               className="px-3 py-1.5 text-sm bg-transparent text-[var(--color-text-primary)] placeholder:text-[var(--color-text-placeholder)] outline-none w-48"
             />
             <button
-              onClick={() => { setSearchOpen(false); setSearchTerm(""); onSearch(""); }}
+              onClick={handleCloseSearch}
               className="p-1.5 text-[var(--color-icon-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -170,47 +159,10 @@ export default function TopBar({
           className="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] rounded-lg transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
           Upload
         </button>
-
-        <div className="relative" ref={userMenuRef}>
-          <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="ml-1 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold hover:opacity-90 transition-opacity"
-          >
-            {initials}
-          </button>
-          {showUserMenu && (
-            <div className="absolute right-0 top-full mt-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xl z-50 py-1 min-w-[180px]">
-              <div className="px-3 py-2 border-b border-[var(--color-border)]">
-                <p className="text-sm font-medium text-[var(--color-text-primary)]">{user?.username}</p>
-                <p className="text-xs text-[var(--color-text-muted)] capitalize">{user?.role}</p>
-              </div>
-              {user?.role === "admin" && (
-                <a
-                  href="/admin"
-                  className="w-full text-left px-3 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-surface-raised)] transition-colors flex items-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-[var(--color-icon-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                  </svg>
-                  Admin panel
-                </a>
-              )}
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-3 py-2 text-sm text-[var(--color-danger)] hover:bg-[var(--color-danger-subtle)] transition-colors flex items-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                </svg>
-                Log out
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </header>
   );

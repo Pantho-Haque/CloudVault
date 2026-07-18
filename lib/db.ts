@@ -328,6 +328,16 @@ export async function cleanupExpiredSessions(): Promise<number> {
   return result.changes;
 }
 
+export async function getStorageBreakdown(): Promise<{ ext: string; size: number }[]> {
+  const database = await getDb();
+  const rows = database.prepare(
+    `SELECT LOWER(SUBSTR(path, INSTR(path, '.') + 1)) as ext, COALESCE(SUM(size), 0) as size
+     FROM files WHERE path LIKE '%.%' AND size > 0
+     GROUP BY ext ORDER BY size DESC`
+  ).all() as { ext: string; size: number }[];
+  return rows;
+}
+
 export async function getAdminStats(): Promise<{ totalUsers: number; totalStorage: number; activeSessions: number }> {
   const database = await getDb();
   const userCount = (database.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number }).count;

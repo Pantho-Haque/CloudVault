@@ -37,6 +37,9 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<FileEntry[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const fetchIdRef = useRef(0);
   const currentPathRef = useRef(currentPath);
@@ -48,6 +51,12 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
   useEffect(() => {
     const saved = localStorage.getItem("viewMode") as "list" | "grid" | null;
     if (saved) setViewMode(saved);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -82,11 +91,12 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
   );
 
   const fetchFiles = useCallback(
-    async (subpath: string = currentPath) => {
+    async (subpath?: string) => {
+      const path = subpath !== undefined ? subpath : currentPathRef.current;
       const id = ++fetchIdRef.current;
       try {
-        const url = subpath
-          ? `/api/files?path=${encodeURIComponent(subpath)}&offset=0&limit=${PAGE_SIZE}`
+        const url = path
+          ? `/api/files?path=${encodeURIComponent(path)}&offset=0&limit=${PAGE_SIZE}`
           : `/api/files?offset=0&limit=${PAGE_SIZE}`;
         const response = await fetch(url);
         if (!response.ok) {
@@ -110,7 +120,7 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
         }
       }
     },
-    [currentPath]
+    []
   );
 
   const loadMore = useCallback(async () => {
@@ -133,6 +143,34 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
       setIsLoadingMore(false);
     }
   }, [currentPath, files.length, hasMore, isLoadingMore]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable;
+
+      if (e.key === "Escape") {
+        if (showUploader) { setShowUploader(false); return; }
+        if (showNewFolder) { setShowNewFolder(false); setFolderName(""); return; }
+        return;
+      }
+
+      if (isInput) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "u") {
+        e.preventDefault();
+        setShowUploader(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("cv:focus-search"));
+      } else if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        setShowNewFolder(true);
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [showUploader, showNewFolder]);
 
   useEffect(() => {
     if (activeView === "files") {
@@ -160,6 +198,41 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const debouncedSearch = useCallback((term: string) => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    if (!term.trim()) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/files/search?q=${encodeURIComponent(term.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data.files || []);
+        }
+      } catch (error) {
+        console.error("Search error:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  }, []);
+
+  const handleSearchChange = useCallback((term: string) => {
+    setSearchTerm(term);
+    debouncedSearch(term);
+    if (!term.trim()) {
+      setSearchResults(null);
+      setIsLoading(true);
+      fetchFiles();
+    }
+  }, [debouncedSearch, fetchFiles]);
 
   const handleCreateFolder = async () => {
     if (!folderName.trim()) return;
@@ -200,7 +273,7 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
           <TopBar
             breadcrumbs={breadcrumbs}
             onNavigate={navigateTo}
-            onSearch={setSearchTerm}
+            onSearch={handleSearchChange}
             viewMode={viewMode}
             onToggleView={() => {
               const next = viewMode === "list" ? "grid" : "list";
@@ -225,6 +298,8 @@ export default function FileBrowser({ initialPath }: FileBrowserProps) {
               setCurrentPath={navigateTo}
               viewMode={viewMode}
               searchTerm={searchTerm}
+              searchResults={searchResults}
+              isSearching={isSearching}
             />
           )}
           {activeView === "shared" && <ShareLinksView />}

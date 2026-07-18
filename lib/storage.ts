@@ -27,6 +27,7 @@ async function walkDir(dir: string, baseDir: string): Promise<FileEntry[]> {
   }
 
   for (const item of items) {
+    if (SYSTEM_DIRS.has(item.name)) continue;
     const fullPath = path.join(dir, item.name);
     const relativePath = path.relative(baseDir, fullPath);
 
@@ -80,13 +81,20 @@ export function getManifestTimestamp(): number {
   return manifestTimestamp;
 }
 
+const SYSTEM_DIRS = new Set([".trash", ".thumbs", ".versions"]);
+
+function isSystemPath(entryPath: string): boolean {
+  const parts = entryPath.split(path.sep);
+  return SYSTEM_DIRS.has(parts[0]);
+}
+
 export function getFiles(subdir: string = ""): FileEntry[] {
   const prefix = subdir ? subdir + path.sep : "";
 
   // Precompute recursive sizes for all directories
   const dirSizes = new Map<string, number>();
   for (const entry of manifest.values()) {
-    if (!entry.isDirectory && entry.size > 0) {
+    if (!entry.isDirectory && entry.size > 0 && !isSystemPath(entry.path)) {
       const parts = entry.path.split(path.sep);
       for (let i = 1; i <= parts.length; i++) {
         const dirPath = parts.slice(0, i).join(path.sep);
@@ -103,6 +111,7 @@ export function getFiles(subdir: string = ""): FileEntry[] {
     for (const entry of manifest.values()) {
       if (entry.path === subdir) continue;
       if (!entry.path.startsWith(prefix)) continue;
+      if (isSystemPath(entry.path)) continue;
 
       const rest = entry.path.slice(prefix.length);
       const firstSegment = rest.split(path.sep)[0];
@@ -124,6 +133,7 @@ export function getFiles(subdir: string = ""): FileEntry[] {
   const topLevel: FileEntry[] = [];
   const seenDirs = new Set<string>();
   for (const entry of manifest.values()) {
+    if (isSystemPath(entry.path)) continue;
     const parts = entry.path.split(path.sep);
     if (parts.length === 1) {
       topLevel.push({ ...entry, size: entry.isDirectory ? (dirSizes.get(entry.path) || 0) : entry.size });

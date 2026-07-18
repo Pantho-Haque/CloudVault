@@ -6,19 +6,30 @@ import { useState, useEffect } from "react";
 export default function UploadProgressPopover() {
   const progress = useUploadProgress();
   const [minimized, setMinimized] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (progress.active) setMinimized(false);
+    if (progress.active) {
+      setMinimized(false);
+      setDismissed(false);
+    }
   }, [progress.active]);
 
-  if (!progress.active && progress.total === 0) return null;
+  useEffect(() => {
+    if (!progress.active && progress.total > 0 && !dismissed) {
+      const timer = setTimeout(() => setDismissed(true), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [progress.active, progress.total, dismissed]);
+
+  if (dismissed || (!progress.active && progress.total === 0)) return null;
 
   if (!progress.active && progress.total > 0) {
     return (
       <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4">
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-2xl p-4 w-72">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-full bg-[var(--color-success-subtle)] flex items-center justify-center">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-[var(--color-success-subtle)] flex items-center justify-center shrink-0">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-[var(--color-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
@@ -27,6 +38,14 @@ export default function UploadProgressPopover() {
               <p className="text-sm font-medium text-[var(--color-text-primary)]">Upload complete</p>
               <p className="text-xs text-[var(--color-text-muted)]">{progress.total} files uploaded</p>
             </div>
+            <button
+              onClick={() => setDismissed(true)}
+              className="p-1 text-[var(--color-icon-muted)] hover:text-[var(--color-text-primary)] rounded-lg transition-colors shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

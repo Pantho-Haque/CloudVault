@@ -21,7 +21,13 @@ export async function GET(request: Request) {
 
     if (resource === "stats") {
       const stats = await fetchAdminStats();
-      return NextResponse.json({ stats });
+      return NextResponse.json({ stats, storageUsed: stats.totalStorage, storageQuota: 21474836480 });
+    }
+
+    if (resource === "storage-breakdown") {
+      const { getStorageBreakdown } = await import("@/lib/db");
+      const breakdown = await getStorageBreakdown();
+      return NextResponse.json({ breakdown });
     }
 
     if (resource === "sessions") {

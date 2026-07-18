@@ -32,6 +32,44 @@ export async function GET(request: Request) {
   const fileName = searchParams.get("fileName");
   const subpath = searchParams.get("path") || "";
   const format = searchParams.get("format");
+  const resource = searchParams.get("resource");
+
+  // Storage stats for any authenticated user
+  if (resource === "storage") {
+    try {
+      const { requireAuth } = await import("@/lib/auth");
+      await requireAuth(request);
+      const { getAllEntries } = await import("@/lib/storage");
+      const entries = getAllEntries();
+      const totalUsed = entries.reduce((sum, f) => sum + (f.size || 0), 0);
+      return NextResponse.json({ storageUsed: totalUsed, storageQuota: 21474836480 });
+    } catch {
+      return NextResponse.json({ storageUsed: 0, storageQuota: 21474836480 });
+    }
+  }
+
+  // Storage breakdown for any authenticated user
+  if (resource === "storage-breakdown") {
+    try {
+      const { requireAuth } = await import("@/lib/auth");
+      await requireAuth(request);
+      const { getAllEntries } = await import("@/lib/storage");
+      const entries = getAllEntries();
+      const extMap = new Map<string, number>();
+      for (const f of entries) {
+        if (f.isDirectory || f.size <= 0) continue;
+        const dotIdx = f.name.lastIndexOf(".");
+        const ext = dotIdx > 0 ? f.name.slice(dotIdx + 1).toLowerCase() : "other";
+        extMap.set(ext, (extMap.get(ext) || 0) + f.size);
+      }
+      const breakdown = Array.from(extMap.entries())
+        .map(([ext, size]) => ({ ext, size }))
+        .sort((a, b) => b.size - a.size);
+      return NextResponse.json({ breakdown });
+    } catch {
+      return NextResponse.json({ breakdown: [] });
+    }
+  }
 
   // SSE stream for real-time updates
   if (searchParams.has("stream")) {

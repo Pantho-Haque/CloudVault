@@ -1,6 +1,24 @@
 # CloudVault
 
-A self-hosted file storage and management web application built with Next.js 15.
+Self-hosted file storage and management — run it with one command, access it from any device on your network.
+
+[![npm version](https://img.shields.io/npm/v/cloudvault.svg)](https://www.npmjs.com/package/cloudvault)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Node.js requirement](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)](https://nodejs.org)
+
+## Features
+
+- Folder-based file browser with drag-and-drop upload
+- Real-time updates via Server-Sent Events (no page refresh)
+- Server-side search across all files (name, type, size, date)
+- File trash with configurable retention (auto-purge after 30 days)
+- File versioning with configurable max versions per file
+- Password-protected share links with optional expiry and download limits
+- Admin panel with user management (admin / write / read roles)
+- Forced password change on first login
+- PWA installable — add to home screen on phone or desktop
+- Infinite scroll for large file collections
+- Keyboard shortcuts: Ctrl+U (upload), Ctrl+K (search), N (new folder)
 
 ## Quick Start
 
@@ -8,32 +26,149 @@ A self-hosted file storage and management web application built with Next.js 15.
 npx cloudvault@latest
 ```
 
-That's it. Requires only [Node.js 24+](https://nodejs.org) — no database, no build tools, no configuration needed.
+Open `http://localhost:3000` in your browser. On first run, admin credentials are printed to your terminal.
 
-On first run, admin credentials are printed to the terminal. Open `http://localhost:3000` in your browser.
+## Prerequisites
 
-## Install Globally
+**Node.js 24 or later** is required — CloudVault uses `node:sqlite`, which ships in Node 24+. No other dependencies are needed (no database server, no build tools).
+
+Check your version:
+
+```bash
+node --version
+```
+
+If you need to install or upgrade Node.js, see the platform instructions below.
+
+## Installation by Platform
+
+### Termux (Android)
+
+> **Important:** Install Termux from [F-Droid](https://f-droid.org/packages/com.termux/) or the [GitHub releases page](https://github.com/termux/termux-app/releases). The Play Store version is outdated and unmaintained.
+
+```bash
+pkg update && pkg install nodejs
+npx cloudvault@latest
+```
+
+The server will be reachable at `http://localhost:3000` from the phone's own browser. To access it from another device on the same network, find your phone's LAN address in the terminal output (printed as `Network  : http://<ip>:3000`), or check your phone's Wi-Fi settings.
+
+### Linux
+
+Install Node.js 24+ via your package manager or [nvm](https://github.com/nvm-sh/nvm):
+
+```bash
+# Ubuntu/Debian (via NodeSource)
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Or via nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+nvm install 24
+```
+
+Then run:
+
+```bash
+npx cloudvault@latest
+```
+
+### macOS
+
+Install Node.js via [Homebrew](https://brew.sh) or the [official installer](https://nodejs.org):
+
+```bash
+brew install node
+```
+
+Then run:
+
+```bash
+npx cloudvault@latest
+```
+
+### Windows
+
+Install Node.js via the [official installer](https://nodejs.org) or [winget](https://learn.microsoft.com/windows/package-manager/winget/):
+
+```bash
+winget install OpenJS.NodeJS.LTS
+```
+
+Then run from PowerShell or Command Prompt:
+
+```bash
+npx cloudvault@latest
+```
+
+### Persistent Install (All Platforms)
+
+If you prefer not to use `npx` each time:
 
 ```bash
 npm install -g cloudvault
 cloudvault
 ```
 
+## First Run
+
+When CloudVault starts on a machine with no existing data, it prints a boxed credential summary to the terminal:
+
+```
+╔══════════════════════════════════════════════════════╗
+║            CloudVault — Server Started               ║
+╠══════════════════════════════════════════════════════╣
+║  Username : admin                                   ║
+║  Password : xK9mP2qR7vL4nW8j                      ║
+╠══════════════════════════════════════════════════════╣
+║  Local    : http://localhost:3000                   ║
+║  Network  : http://192.168.1.42:3000                ║
+╠══════════════════════════════════════════════════════╣
+║  Credentials saved to: ~/.cloudvault/.cloudvault-initial-credentials
+║  Delete this file after noting the credentials.      ║
+║  Use these credentials if you forget your password.  ║
+╚══════════════════════════════════════════════════════╝
+```
+
+- A credentials file is written to `~/.cloudvault/.cloudvault-initial-credentials`. Delete it after noting the credentials.
+- On your first login at `http://localhost:3000/login`, you will be forced to change the admin password before doing anything else.
+
 ## Configuration
 
-All settings are optional — sensible defaults work out of the box.
+All configuration is optional — defaults work out of the box. Data is stored in `~/.cloudvault/` by default.
 
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `3000` | Server port |
-| `STORAGE_DIR` | `~/.cloudvault/uploads` | Where uploaded files are stored |
-| `DB_PATH` | `~/.cloudvault/cloudvault.db` | SQLite database path |
-| `SESSION_SECRET` | *(auto-generated)* | Session encryption key |
-| `CLOUDVAULT_DATA_DIR` | `~/.cloudvault` | Base directory for data |
+| `STORAGE_DIR` | `~/.cloudvault/uploads` | Directory where uploaded files are stored |
+| `DB_PATH` | `~/.cloudvault/cloudvault.db` | SQLite database file path |
+| `SESSION_SECRET` | *(auto-generated)* | Secret key for session cookies — set a stable value if you want sessions to survive restarts |
+| `MAX_UPLOAD_SIZE_MB` | `100` | Maximum upload size in megabytes |
+| `TRASH_RETENTION_DAYS` | `30` | Days before trashed files are auto-purged |
+| `MAX_FILE_VERSIONS` | `5` | Maximum number of stored versions per file |
+| `CLOUDVAULT_DATA_DIR` | `~/.cloudvault` | Base data directory (CLI only — overrides the default locations of `STORAGE_DIR` and `DB_PATH`) |
 
-Set via environment variables or a `.env` file in the data directory.
+Set via environment variables:
 
-## From Source
+```bash
+PORT=8080 npx cloudvault@latest
+```
+
+Or create a `.env` file in `~/.cloudvault/`.
+
+## Updating
+
+`npx cloudvault@latest` always pulls the latest published version — no action needed.
+
+For a persistent install:
+
+```bash
+npm update -g cloudvault
+```
+
+## Development
+
+Requires [pnpm](https://pnpm.io).
 
 ```bash
 git clone https://github.com/Pantho-Haque/CloudVault.git
@@ -42,25 +177,24 @@ pnpm install
 pnpm run dev
 ```
 
-## Features
+Commands:
 
-- Drag-and-drop file upload with progress tracking
-- Folder creation and file organization
-- Server-side search across all files
-- File sharing with password-protected links
-- File versioning and trash with retention
-- Dark/light theme support
-- Infinite scroll for large file collections
-- Admin dashboard with user management
-- Keyboard shortcuts (Ctrl+U upload, Ctrl+K search, N new folder)
+| Command | Description |
+|---|---|
+| `pnpm run dev` | Start dev server with Turbopack |
+| `pnpm run build` | Production build (standalone output in `build/standalone/`) |
+| `pnpm run start` | Start production server |
+| `pnpm run lint` | Lint with ESLint |
+
+For architecture details, see [CLAUDE.md](./CLAUDE.md).
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router, Turbopack)
-- **Runtime**: Node.js 24+ (uses `node:sqlite`)
-- **Database**: SQLite (zero configuration)
-- **Styling**: TailwindCSS v4
-- **Language**: TypeScript (strict mode)
+- **Next.js 15** — App Router with Turbopack
+- **React 19** with TypeScript (strict mode)
+- **TailwindCSS v4** for styling
+- **SQLite** via `node:sqlite` — zero configuration, no external database
+- **Framer Motion** for animations
 
 ## License
 

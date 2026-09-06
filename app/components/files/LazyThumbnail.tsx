@@ -105,6 +105,7 @@ export default function LazyThumbnail({ filename, filePath, className = "" }: { 
   return (
     <div ref={ref} className={`rounded-lg overflow-hidden bg-[var(--color-surface-sunken)] ${className}`}>
       {thumb ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img src={thumb} alt="" className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full bg-purple-500/10 animate-pulse" />

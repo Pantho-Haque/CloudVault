@@ -84,8 +84,32 @@ export default function TrashView({ onRestore }: TrashViewProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-primary)]" />
+      <div className="p-6 animate-pulse">
+        {/* Skeleton loading state */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="space-y-2">
+            <div className="h-6 w-20 bg-[var(--color-surface-raised)] rounded" />
+            <div className="h-4 w-32 bg-[var(--color-surface-raised)] rounded" />
+          </div>
+          <div className="h-9 w-24 bg-[var(--color-surface-raised)] rounded-xl" />
+        </div>
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex items-center justify-between p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[var(--color-surface-raised)] rounded-xl shrink-0" />
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-[var(--color-surface-raised)] rounded" />
+                  <div className="h-3 w-24 bg-[var(--color-surface-raised)] rounded" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="h-8 w-16 bg-[var(--color-surface-raised)] rounded-lg" />
+                <div className="h-8 w-8 bg-[var(--color-surface-raised)] rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -110,14 +134,14 @@ export default function TrashView({ onRestore }: TrashViewProps) {
       </div>
 
       {trashFiles.length === 0 ? (
-        <div className="text-center py-16">
+        <div className="text-center py-16" role="status" aria-live="polite">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--color-surface-raised)] flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[var(--color-icon-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
             </svg>
           </div>
-          <p className="text-[var(--color-text-secondary)] font-medium">Trash is empty</p>
-          <p className="text-[var(--color-text-muted)] text-sm mt-1">Deleted files will appear here</p>
+          <h3 className="text-base font-semibold text-[var(--color-text-primary)]">Trash is empty</h3>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1">Deleted files will appear here for 30 days</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -140,14 +164,15 @@ export default function TrashView({ onRestore }: TrashViewProps) {
               <div className="flex items-center gap-1 ml-4">
                 <button
                   onClick={() => restoreFromTrash(file.trashName)}
-                  className="px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary-subtle)] hover:bg-[var(--color-primary-subtle)] rounded-lg transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary-subtle)] hover:bg-[var(--color-primary-subtle)] rounded-lg transition-colors min-h-[44px] flex items-center"
                 >
                   Restore
                 </button>
                 <button
                   onClick={() => deletePermanently(file.trashName)}
-                  className="p-2 text-[var(--color-icon-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-subtle)] rounded-lg transition-colors"
+                  className="p-2 text-[var(--color-icon-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger-subtle)] rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                   title="Delete permanently"
+                  aria-label="Delete permanently"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

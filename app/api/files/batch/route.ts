@@ -4,6 +4,7 @@ import path from "path";
 import { config } from "@/lib/config";
 import { ensureStorageDir, removeFromManifest, addToManifest } from "@/lib/storage";
 import { broadcastFileChange } from "@/lib/sse";
+import { validatePath, isSystemPath } from "@/lib/security";
 
 export async function POST(request: Request) {
   await ensureStorageDir();
@@ -19,25 +20,28 @@ export async function POST(request: Request) {
 
     if (action === "delete") {
       for (const filePath of filePaths) {
+        // Validate path to prevent traversal
+        const safePath = validatePath(filePath);
+        if (!safePath) {
+          results.push({ path: filePath, success: false, error: "Invalid path" });
+          continue;
+        }
+        if (isSystemPath(safePath)) {
+          results.push({ path: filePath, success: false, error: "Access denied" });
+          continue;
+        }
+
         try {
-          const fullPath = path.join(config.storageDir, filePath);
+          const fullPath = path.join(config.storageDir, safePath);
           await fs.access(fullPath);
-          const stats = await fs.stat(fullPath);
 
-          if (stats.isDirectory()) {
-            const trashDir = path.join(config.storageDir, ".trash");
-            await fs.mkdir(trashDir, { recursive: true });
-            const trashPath = path.join(trashDir, `${Date.now()}_${path.basename(filePath).replace(/[\/\\]/g, "_")}`);
-            await fs.rename(fullPath, trashPath);
-          } else {
-            const trashDir = path.join(config.storageDir, ".trash");
-            await fs.mkdir(trashDir, { recursive: true });
-            const trashPath = path.join(trashDir, `${Date.now()}_${path.basename(filePath).replace(/[\/\\]/g, "_")}`);
-            await fs.rename(fullPath, trashPath);
-          }
+          const trashDir = path.join(config.storageDir, ".trash");
+          await fs.mkdir(trashDir, { recursive: true });
+          const trashPath = path.join(trashDir, `${Date.now()}_${path.basename(safePath).replace(/[\/\\]/g, "_")}`);
+          await fs.rename(fullPath, trashPath);
 
-          removeFromManifest(filePath);
-          broadcastFileChange("deleted", filePath);
+          removeFromManifest(safePath);
+          broadcastFileChange("deleted", safePath);
           results.push({ path: filePath, success: true });
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -45,17 +49,37 @@ export async function POST(request: Request) {
         }
       }
     } else if (action === "move" && destination) {
+      // Validate destination path
+      const safeDest = validatePath(destination);
+      if (!safeDest) {
+        return NextResponse.json({ message: "Invalid destination path" }, { status: 400 });
+      }
+      if (isSystemPath(safeDest)) {
+        return NextResponse.json({ message: "Access denied to system path" }, { status: 403 });
+      }
+
       for (const filePath of filePaths) {
+        // Validate each source path
+        const safePath = validatePath(filePath);
+        if (!safePath) {
+          results.push({ path: filePath, success: false, error: "Invalid path" });
+          continue;
+        }
+        if (isSystemPath(safePath)) {
+          results.push({ path: filePath, success: false, error: "Access denied" });
+          continue;
+        }
+
         try {
-          const sourcePath = path.join(config.storageDir, filePath);
-          const fileName = path.basename(filePath);
-          const destPath = path.join(config.storageDir, destination, fileName);
+          const sourcePath = path.join(config.storageDir, safePath);
+          const fileName = path.basename(safePath);
+          const destPath = path.join(config.storageDir, safeDest, fileName);
 
           await fs.access(sourcePath);
           await fs.mkdir(path.dirname(destPath), { recursive: true });
           await fs.rename(sourcePath, destPath);
 
-          removeFromManifest(filePath);
+          removeFromManifest(safePath);
           const newPath = path.relative(config.storageDir, destPath);
           const stats = await fs.stat(destPath);
           addToManifest({

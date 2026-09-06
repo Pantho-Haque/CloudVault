@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { config } from "@/lib/config";
+import { validatePath, isSystemPath } from "@/lib/security";
 
 const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"]);
 const VIDEO_EXTS = new Set([".mp4", ".webm", ".ogg"]);
@@ -14,7 +15,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "path required" }, { status: 400 });
   }
 
-  const fullPath = path.join(config.storageDir, filePath);
+  // Validate path to prevent path traversal attacks
+  const relativePath = validatePath(filePath);
+  if (!relativePath) {
+    return NextResponse.json({ message: "Invalid file path" }, { status: 400 });
+  }
+
+  // Check for system paths
+  if (isSystemPath(relativePath)) {
+    return NextResponse.json({ message: "Access denied" }, { status: 403 });
+  }
+
+  const fullPath = path.join(config.storageDir, relativePath);
 
   try {
     await fs.access(fullPath);
@@ -22,7 +34,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "File not found" }, { status: 404 });
   }
 
-  const ext = path.extname(filePath).toLowerCase();
+  const ext = path.extname(relativePath).toLowerCase();
 
   if (IMAGE_EXTS.has(ext)) {
     const fileBuffer = await fs.readFile(fullPath);

@@ -106,45 +106,67 @@ export default function FileList({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-primary)]" />
+      <div className="animate-pulse">
+        {/* Skeleton loading state */}
+        <div className="px-5 py-3 flex items-center justify-between border-b border-[var(--color-border)]">
+          <div className="flex items-center gap-3">
+            <div className="h-4 w-20 bg-[var(--color-surface-raised)] rounded" />
+            <div className="flex items-center gap-1">
+              <div className="h-6 w-16 bg-[var(--color-surface-raised)] rounded" />
+              <div className="h-6 w-16 bg-[var(--color-surface-raised)] rounded" />
+              <div className="h-6 w-16 bg-[var(--color-surface-raised)] rounded" />
+            </div>
+          </div>
+        </div>
+        <div className="p-5 space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-3 p-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl">
+              <div className="w-10 h-10 bg-[var(--color-surface-raised)] rounded-lg shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-48 bg-[var(--color-surface-raised)] rounded" />
+                <div className="h-3 w-24 bg-[var(--color-surface-raised)] rounded" />
+              </div>
+              <div className="h-8 w-20 bg-[var(--color-surface-raised)] rounded" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (isSearching) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex flex-col items-center justify-center py-16 gap-3" role="status" aria-live="polite">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-primary)]" />
-        <span className="ml-3 text-sm text-[var(--color-text-muted)]">Searching...</span>
+        <span className="text-sm text-[var(--color-text-muted)]">Searching...</span>
       </div>
     );
   }
 
   if (files.length === 0 && !searchTerm) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
+      <div className="flex flex-col items-center justify-center py-16 px-4" role="status" aria-live="polite">
         <div className="w-20 h-20 rounded-2xl bg-[var(--color-surface-raised)] flex items-center justify-center mb-4">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-[var(--color-icon-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
           </svg>
         </div>
-        <p className="text-[var(--color-text-secondary)] font-medium">This folder is empty</p>
-        <p className="text-[var(--color-text-muted)] text-sm mt-1">Upload files or create a folder to get started</p>
+        <h3 className="text-base font-semibold text-[var(--color-text-primary)]">This folder is empty</h3>
+        <p className="text-sm text-[var(--color-text-muted)] mt-1 text-center">Upload files or create a folder to get started</p>
       </div>
     );
   }
 
   if (filteredFiles.length === 0 && (searchTerm || searchResults !== null)) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
+      <div className="flex flex-col items-center justify-center py-16 px-4" role="status" aria-live="polite">
         <div className="w-20 h-20 rounded-2xl bg-[var(--color-surface-raised)] flex items-center justify-center mb-4">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-[var(--color-icon-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
         </div>
-        <p className="text-[var(--color-text-secondary)] font-medium">No results for &ldquo;{searchTerm}&rdquo;</p>
-        <p className="text-[var(--color-text-muted)] text-sm mt-1">Try a different search term</p>
+        <h3 className="text-base font-semibold text-[var(--color-text-primary)]">No results for &ldquo;{searchTerm}&rdquo;</h3>
+        <p className="text-sm text-[var(--color-text-muted)] mt-1 text-center">Try a different search term or check your spelling</p>
       </div>
     );
   }

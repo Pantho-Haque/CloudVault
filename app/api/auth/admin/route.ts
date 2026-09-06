@@ -54,7 +54,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await createUserAccount(username, password, role || "read");
+    // Validate role is one of the allowed values
+    const validRoles = ["admin", "write", "read"];
+    const userRole = validRoles.includes(role) ? role : "read";
+
+    const user = await createUserAccount(username, password, userRole);
     return NextResponse.json({
       message: "User created",
       user: { id: user.id, username: user.username, role: user.role },
@@ -72,6 +76,15 @@ export async function PATCH(request: Request) {
     if (!userId || !role) {
       return NextResponse.json(
         { message: "userId and role are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate role is one of the allowed values
+    const validRoles = ["admin", "write", "read"];
+    if (!validRoles.includes(role)) {
+      return NextResponse.json(
+        { message: "Invalid role. Must be admin, write, or read" },
         { status: 400 }
       );
     }

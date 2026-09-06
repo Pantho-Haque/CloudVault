@@ -4,6 +4,7 @@ import path from "path";
 import { config } from "@/lib/config";
 import { ensureStorageDir, removeFromManifest, addToManifest } from "@/lib/storage";
 import { broadcastFileChange } from "@/lib/sse";
+import { validatePath, isSystemPath } from "@/lib/security";
 
 export async function POST(request: Request) {
   await ensureStorageDir();
@@ -18,8 +19,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const sourcePath = path.join(config.storageDir, source);
-    const destPath = path.join(config.storageDir, destination);
+    // Validate paths to prevent path traversal
+    const safeSource = validatePath(source);
+    const safeDest = validatePath(destination);
+
+    if (!safeSource || !safeDest) {
+      return NextResponse.json({ message: "Invalid path" }, { status: 400 });
+    }
+
+    if (isSystemPath(safeSource) || isSystemPath(safeDest)) {
+      return NextResponse.json({ message: "Access denied to system path" }, { status: 403 });
+    }
+
+    const sourcePath = path.join(config.storageDir, safeSource);
+    const destPath = path.join(config.storageDir, safeDest);
 
     try {
       await fs.access(sourcePath);

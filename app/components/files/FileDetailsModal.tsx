@@ -137,6 +137,7 @@ function ImagePreview({ file }: { file: FileEntry | null }) {
 
   return (
     <div className="flex items-center justify-center w-full h-full bg-[var(--color-surface-sunken)] p-4">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={file?.name || ""}

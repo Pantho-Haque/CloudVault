@@ -3,6 +3,16 @@ import { getDb } from "@/lib/db";
 import { promises as fs } from "fs";
 import path from "path";
 import { config } from "@/lib/config";
+import { checkRateLimit } from "@/lib/ratelimit";
+
+// Rate limit: 10 attempts per minute per IP for share link access
+const SHARE_RATE_LIMIT = { maxAttempts: 10, windowMs: 60000 };
+
+function getClientIp(request: Request): string {
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+         request.headers.get("x-real-ip") ||
+         "unknown";
+}
 
 async function verifyShareLink(linkId: string, password?: string) {
   const database = await getDb();
@@ -65,8 +75,28 @@ export async function GET(request: Request) {
 
   if (!linkId) return NextResponse.json({ message: "Link ID required" }, { status: 400 });
 
+  // Apply rate limiting
+  const ip = getClientIp(request);
+  const rateLimitKey = `share:${ip}:${linkId}`;
+  const rateLimit = checkRateLimit(rateLimitKey, SHARE_RATE_LIMIT);
+
+  if (rateLimit.blocked) {
+    return NextResponse.json(
+      { message: "Too many attempts. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil(rateLimit.retryAfterMs / 1000).toString(),
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
+
   const result = await verifyShareLink(linkId, password || undefined);
-  if (!result.success) return NextResponse.json({ message: result.error }, { status: 403 });
+  if (!result.success) {
+    return NextResponse.json({ message: result.error }, { status: 403 });
+  }
 
   const database = await getDb();
   database.prepare("UPDATE share_links SET download_count = download_count + 1 WHERE id = ?").run(linkId);
@@ -78,8 +108,27 @@ export async function POST(request: Request) {
   const { linkId, password } = await request.json();
   if (!linkId) return NextResponse.json({ message: "linkId required" }, { status: 400 });
 
+  // Apply rate limiting
+  const ip = getClientIp(request);
+  const rateLimitKey = `share:${ip}:${linkId}`;
+  const rateLimit = checkRateLimit(rateLimitKey, SHARE_RATE_LIMIT);
+
+  if (rateLimit.blocked) {
+    return NextResponse.json(
+      { message: "Too many attempts. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil(rateLimit.retryAfterMs / 1000).toString(),
+        },
+      }
+    );
+  }
+
   const result = await verifyShareLink(linkId, password);
-  if (!result.success) return NextResponse.json({ message: result.error }, { status: 403 });
+  if (!result.success) {
+    return NextResponse.json({ message: result.error }, { status: 403 });
+  }
 
   return NextResponse.json({ filePath: result.filePath, fileName: path.basename(result.filePath!) });
 }

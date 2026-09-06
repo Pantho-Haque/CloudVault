@@ -46,6 +46,7 @@ function PreviewThumb({ previewUrl, previewType }: { previewUrl: string | null; 
   if (previewType === "image" && previewUrl) {
     return (
       <div className="w-10 h-10 rounded-lg overflow-hidden bg-[var(--color-surface-sunken)] shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={previewUrl} alt="" className="w-full h-full object-cover" />
       </div>
     );

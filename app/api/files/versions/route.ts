@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { config } from "@/lib/config";
 import { ensureStorageDir } from "@/lib/storage";
+import { validatePath, isSystemPath } from "@/lib/security";
 
 async function getVersionDir(): Promise<string> {
   const versionsDir = path.join(config.storageDir, ".versions");
@@ -21,9 +22,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "fileName is required" }, { status: 400 });
   }
 
+  // Validate file path to prevent traversal
+  const safeFileName = validatePath(fileName);
+  if (!safeFileName) {
+    return NextResponse.json({ message: "Invalid file path" }, { status: 400 });
+  }
+
   try {
     const versionsDir = await getVersionDir();
-    const safeDirName = fileName.replace(/[\/\\]/g, "_");
+    const safeDirName = safeFileName.replace(/[\/\\]/g, "_");
     const fileVersionDir = path.join(versionsDir, safeDirName);
 
     try {
@@ -73,7 +80,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "fileName is required" }, { status: 400 });
     }
 
-    const filePath = path.join(config.storageDir, fileName);
+    // Validate file path to prevent traversal
+    const safeFileName = validatePath(fileName);
+    if (!safeFileName) {
+      return NextResponse.json({ message: "Invalid file path" }, { status: 400 });
+    }
+    if (isSystemPath(safeFileName)) {
+      return NextResponse.json({ message: "Access denied" }, { status: 403 });
+    }
+
+    const filePath = path.join(config.storageDir, safeFileName);
     try {
       await fs.access(filePath);
     } catch {
@@ -81,7 +97,7 @@ export async function POST(request: Request) {
     }
 
     const versionsDir = await getVersionDir();
-    const safeDirName = fileName.replace(/[\/\\]/g, "_");
+    const safeDirName = safeFileName.replace(/[\/\\]/g, "_");
     const fileVersionDir = path.join(versionsDir, safeDirName);
     await fs.mkdir(fileVersionDir, { recursive: true });
 
@@ -98,7 +114,7 @@ export async function POST(request: Request) {
     }
 
     const nextVersion = maxVersion + 1;
-    const versionFileName = `${nextVersion}_${path.basename(fileName)}`;
+    const versionFileName = `${nextVersion}_${path.basename(safeFileName)}`;
     const versionPath = path.join(fileVersionDir, versionFileName);
 
     await fs.copyFile(filePath, versionPath);
@@ -135,8 +151,22 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ message: "fileName and versionId are required" }, { status: 400 });
     }
 
+    // Validate file path to prevent traversal
+    const safeFileName = validatePath(fileName);
+    if (!safeFileName) {
+      return NextResponse.json({ message: "Invalid file path" }, { status: 400 });
+    }
+    if (isSystemPath(safeFileName)) {
+      return NextResponse.json({ message: "Access denied" }, { status: 403 });
+    }
+
+    // Validate versionId doesn't contain path traversal
+    if (versionId.includes("..") || versionId.includes("/") || versionId.includes("\\")) {
+      return NextResponse.json({ message: "Invalid version ID" }, { status: 400 });
+    }
+
     const versionsDir = await getVersionDir();
-    const safeDirName = fileName.replace(/[\/\\]/g, "_");
+    const safeDirName = safeFileName.replace(/[\/\\]/g, "_");
     const versionPath = path.join(versionsDir, safeDirName, versionId);
 
     try {
@@ -145,7 +175,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ message: "Version not found" }, { status: 404 });
     }
 
-    const filePath = path.join(config.storageDir, fileName);
+    const filePath = path.join(config.storageDir, safeFileName);
 
     // Save current as a version before restoring
     try {
@@ -160,7 +190,7 @@ export async function PATCH(request: Request) {
         if (!isNaN(num) && num > maxVersion) maxVersion = num;
       }
 
-      const backupVersion = `${maxVersion + 1}_${path.basename(fileName)}`;
+      const backupVersion = `${maxVersion + 1}_${path.basename(safeFileName)}`;
       await fs.copyFile(filePath, path.join(fileVersionDir, backupVersion));
     } catch {
       // File doesn't exist yet, no need to backup

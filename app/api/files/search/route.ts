@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { ensureStorageDir, getAllEntries } from "@/lib/storage";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: Request) {
+  // Require authentication for search
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ message: "Authentication required" }, { status: 401 });
+  }
+
   await ensureStorageDir();
 
   const { searchParams } = new URL(request.url);

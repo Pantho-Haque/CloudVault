@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { config } from "@/lib/config";
+import { validatePath, isSystemPath } from "@/lib/security";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,7 +12,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "path required" }, { status: 400 });
   }
 
-  const fullPath = path.join(config.storageDir, filePath);
+  // Validate path to prevent path traversal attacks
+  const relativePath = validatePath(filePath);
+  if (!relativePath) {
+    return NextResponse.json({ message: "Invalid file path" }, { status: 400 });
+  }
+
+  // Check for system paths
+  if (isSystemPath(relativePath)) {
+    return NextResponse.json({ message: "Access denied" }, { status: 403 });
+  }
+
+  const fullPath = path.join(config.storageDir, relativePath);
 
   try {
     await fs.access(fullPath);
@@ -20,7 +32,7 @@ export async function GET(request: Request) {
   }
 
   const fileBuffer = await fs.readFile(fullPath);
-  const ext = path.extname(filePath).toLowerCase();
+  const ext = path.extname(relativePath).toLowerCase();
   const mimeMap: Record<string, string> = {
     ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
     ".gif": "image/gif", ".webp": "image/webp", ".bmp": "image/bmp",

@@ -10,6 +10,7 @@ import {
   removeFromManifest,
 } from "@/lib/storage";
 import { addClient, removeClient, broadcastFileChange, startKeepAlive } from "@/lib/sse";
+import { validatePath, validateFilePath, isSystemPath } from "@/lib/security";
 
 startKeepAlive();
 
@@ -281,9 +282,20 @@ export async function DELETE(request: Request) {
   // Delete folder
   if (searchParams.has("folder")) {
     const folderName = searchParams.get("folder")!;
-    const folderPath = subpath
-      ? path.join(config.storageDir, subpath, folderName)
-      : path.join(config.storageDir, folderName);
+
+    // Validate folder path to prevent traversal
+    const userFolderPath = subpath ? `${subpath}/${folderName}` : folderName;
+    const safePath = validatePath(userFolderPath);
+    if (!safePath) {
+      return NextResponse.json({ message: "Invalid folder path" }, { status: 400 });
+    }
+
+    const folderPath = path.join(config.storageDir, safePath);
+
+    // Check for system path
+    if (isSystemPath(safePath)) {
+      return NextResponse.json({ message: "Access denied" }, { status: 403 });
+    }
 
     try {
       await fs.access(folderPath);
@@ -297,9 +309,8 @@ export async function DELETE(request: Request) {
       const trashPath = path.join(trashDir, `${Date.now()}_${folderName.replace(/[\/\\]/g, "_")}`);
       await fs.rename(folderPath, trashPath);
 
-      const relativePath = subpath ? `${subpath}/${folderName}` : folderName;
-      removeFromManifest(relativePath);
-      broadcastFileChange("deleted", relativePath);
+      removeFromManifest(safePath);
+      broadcastFileChange("deleted", safePath);
       return NextResponse.json({ message: "Folder moved to trash", timestamp: Date.now() });
     } catch {
       return NextResponse.json({ message: "Error deleting folder" }, { status: 500 });
@@ -313,9 +324,18 @@ export async function DELETE(request: Request) {
     );
   }
 
-  const filePath = subpath
-    ? path.join(config.storageDir, subpath, fileName)
-    : path.join(config.storageDir, fileName);
+  // Validate file path to prevent traversal
+  const safeFilePath = validateFilePath(fileName, subpath);
+  if (!safeFilePath) {
+    return NextResponse.json({ message: "Invalid file path" }, { status: 400 });
+  }
+
+  // Check for system path
+  if (isSystemPath(safeFilePath)) {
+    return NextResponse.json({ message: "Access denied" }, { status: 403 });
+  }
+
+  const filePath = path.join(config.storageDir, safeFilePath);
 
   try {
     await fs.access(filePath);
@@ -328,12 +348,11 @@ export async function DELETE(request: Request) {
     const trashDir = path.join(config.storageDir, ".trash");
     await fs.mkdir(trashDir, { recursive: true });
 
-    const relativePath = subpath ? `${subpath}/${fileName}` : fileName;
     const trashPath = path.join(trashDir, `${Date.now()}_${fileName.replace(/[\/\\]/g, "_")}`);
     await fs.rename(filePath, trashPath);
 
-    removeFromManifest(relativePath);
-    broadcastFileChange("deleted", relativePath);
+    removeFromManifest(safeFilePath);
+    broadcastFileChange("deleted", safeFilePath);
 
     return NextResponse.json({
       message: "File deleted successfully",

@@ -79,6 +79,7 @@ export default function ShareLinkModal({ filePath, onClose }: ShareLinkModalProp
               Share link created successfully!
             </div>
             <div className="flex justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(result.url)}&bgcolor=000000&color=ffffff`}
                 alt="QR Code"
